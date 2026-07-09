@@ -1,0 +1,15 @@
+node_modules/
+
+# React Router
+/.react-router/
+/build/
+
+# Test artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/.lighthouseci/
+
+# Editor / OS
+.DS_Store
+*.local

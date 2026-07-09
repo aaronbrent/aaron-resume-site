@@ -1,0 +1,53 @@
+/* Self-hosted fonts (§8): display + body, latin subset, swap. */
+@import "@fontsource/barlow-condensed/latin-600.css";
+@import "@fontsource/barlow-condensed/latin-700.css";
+@import "@fontsource-variable/public-sans/index.css";
+
+@import "tailwindcss";
+
+/*
+ * Design tokens (PLAN §8) — the printed-piste-map register.
+ * These become real CSS custom properties (--color-paper, …) that the rig
+ * and spray canvas read via getComputedStyle. Single source of truth.
+ */
+@theme {
+  --color-paper: #f4efe3;
+  --color-ink: #22303a;
+  --color-evergreen: #2e5e4e;
+  --color-bluebird: #3d7db5;
+  --color-patrol: #e4572e;
+  --color-powder: #ffffff;
+  /* Text-safe link blue: bluebird fails WCAG AA on paper (~3.9:1); this
+     passes at 4.5:1+. Use bluebird for large/decorative, this for links. */
+  --color-bluebird-deep: #2c5d88;
+
+  --font-display: "Barlow Condensed", "Barlow Condensed Fallback", sans-serif;
+  --font-body: "Public Sans Variable", "Public Sans Fallback", sans-serif;
+}
+
+/*
+ * Metric-matched fallbacks (§6): size-adjust'd local Arial so the swap from
+ * fallback → webfont causes zero layout shift. Values generated with fontpie
+ * from the shipped woff2 files. CLS budget is 0, not "near zero".
+ */
+@font-face {
+  font-family: "Public Sans Fallback";
+  font-style: normal;
+  font-weight: 100 900;
+  src: local("Arial");
+  ascent-override: 92.25%;
+  descent-override: 21.85%;
+  line-gap-override: 0%;
+  size-adjust: 102.98%;
+}
+
+@font-face {
+  font-family: "Barlow Condensed Fallback";
+  font-style: normal;
+  font-weight: 600 700;
+  src: local("Arial");
+  ascent-override: 123.84%;
+  descent-override: 24.77%;
+  line-gap-override: 0%;
+  size-adjust: 80.75%;
+}

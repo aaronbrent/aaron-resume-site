@@ -334,12 +334,12 @@ Light/print aesthetic only at launch — a paper map has no dark mode; that's a 
 Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's exit gate red.**
 
 ### Phase 0 — Rail (day 1) ✅ = deployed hello-world at a real URL
-- [ ] `git init`, GitHub repo (public — the repo is part of the demo; colophon links to it)
-- [ ] Scaffold RR v7 framework mode, TypeScript `strict`, `prerender: true`
-- [ ] Tailwind v4 with `@theme` tokens (§8 palette + type in from day one)
-- [ ] ESLint (flat, + `jsx-a11y`) + Prettier, Vitest, Playwright+axe
-- [ ] GitHub Actions: typecheck → lint → unit → e2e/axe → Lighthouse CI (budgets.json from §6) → deploy
-- [ ] Cloudflare Pages connected; preview deploys per PR
+- [x] `git init`, GitHub repo (public — the repo is part of the demo; colophon links to it)
+- [x] Scaffold RR v7 framework mode, TypeScript `strict`, `prerender: true`
+- [x] Tailwind v4 with `@theme` tokens (§8 palette + type in from day one)
+- [x] ESLint (flat, + `jsx-a11y`) + Prettier, Vitest, Playwright+axe
+- [x] GitHub Actions: typecheck → lint → unit → e2e/axe → Lighthouse CI (budgets.json from §6) → deploy
+- [ ] Cloudflare Pages connected; preview deploys per PR — *deploy job is in CI, gated on `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` repo secrets; needs your Cloudflare account to connect*
 - **Exit:** CI green, page live, Lighthouse Perf ≥ 95 / A11y = 100 on the skeleton.
 
 ### Phase 1 — The document (days 2–4) ✅ = a complete, hireable resume site. If everything after this fell over, this ships.
