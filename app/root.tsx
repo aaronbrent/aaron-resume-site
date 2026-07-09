@@ -40,7 +40,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             html.js, so a no-JS visit sees everything. Runs pre-paint. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "document.documentElement.classList.add('js')",
+            __html:
+              "document.documentElement.classList.add('js');(function(){var done=function(){document.documentElement.classList.add('has-scrolled')};if(window.scrollY)done();window.addEventListener('scroll',done,{passive:true,once:true})})()",
           }}
         />
         <a

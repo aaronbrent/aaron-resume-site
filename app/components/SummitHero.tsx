@@ -1,4 +1,5 @@
 import { contact, site } from "~/content/meta";
+import { GondolaIntro } from "~/components/GondolaIntro";
 
 export function SummitHero() {
   return (
@@ -13,6 +14,7 @@ export function SummitHero() {
             Aaron Ellis
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed">{site.positioning}</p>
+          <GondolaIntro />
           <p className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
             <a className="text-bluebird-deep underline underline-offset-2" href="/resume">
               Plain resume

@@ -1,4 +1,5 @@
 import { Rider } from "~/components/Rider";
+import { SprayCanvas } from "~/components/SprayCanvas";
 import type { TrailVariant } from "~/content/trails";
 import { trails } from "~/content/trails";
 import { waypoints } from "~/content/waypoints";
@@ -239,6 +240,7 @@ export function MountainStage() {
       <TrailSvg variant={trails.mobile} id="mobile" />
       <TrailSvg variant={trails.desktop} id="desktop" />
       <Rider />
+      <SprayCanvas />
       {/* fold creases: the map lived a season folded in a jacket pocket */}
       <div className="fold-crease-h" />
       <div className="fold-crease-v" />
