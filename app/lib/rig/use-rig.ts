@@ -188,7 +188,11 @@ export function startRig(
         rafId = requestAnimationFrame(frame);
         return;
       }
+      // Particles have settled: park, and apply once more so the final frame
+      // the HUD receives reports the parked state instead of the last one it
+      // saw while running.
       parked = true;
+      apply(current, 0, dt);
       return;
     }
     apply(current, velocity, dt);
