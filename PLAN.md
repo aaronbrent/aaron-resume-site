@@ -373,11 +373,11 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 - **Exit:** the core fantasy works: scroll drives, rider carves, nothing hijacked.
 
 ### Phase 4 — Alive (days 13–16) ✅ = a character, not a sticker
-- [ ] Pose state machine + thresholds file; poses: tuck, carve L/R, compress/unweight, brake
-- [ ] `--lean` / `--crouch` continuous channels
-- [ ] Spray canvas: pool, emitter, velocity×edge scaling; hockey-stop burst at the base
-- [ ] Gondola intro sequence (pure CSS) + summit idle loop; scroll-resolves-instantly guard
-- [ ] Switch on scroll-up with 150ms hysteresis
+- [x] Pose state machine + thresholds file; poses: tuck, carve L/R, compress/unweight, brake
+- [x] `--lean` / `--crouch` continuous channels
+- [x] Spray canvas: pool, emitter, velocity×edge scaling; hockey-stop burst at the base
+- [x] Gondola intro sequence (pure CSS) + summit idle loop; scroll-resolves-instantly guard
+- [x] Switch on scroll-up with 150ms hysteresis
 - [ ] Re-run full perf gate on-device with spray active
 - **Exit:** the run lands — summit idle reads "ready," the stop reads "arrived," and frame budget still holds.
 

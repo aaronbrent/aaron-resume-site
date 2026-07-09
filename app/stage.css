@@ -16,6 +16,230 @@
   }
 }
 
+/* Phase 4 rider rig: the root transform is written by JS; these nested SVG
+   groups consume its continuous channels and discrete data-pose state. */
+.rider-park {
+  --lean: 0deg;
+  --crouch: 0;
+  --pose-lean: 0deg;
+  --pose-crouch: 0;
+  --pose-tilt: 0deg;
+  --stance: 1;
+}
+.rider-svg {
+  overflow: visible;
+}
+.rider-pose,
+.rider-body,
+.rider-legs,
+.rider-board,
+.rider-arms,
+.rider-goggles {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.rider-pose {
+  transform: rotate(var(--pose-tilt)) scaleX(var(--stance));
+  transform-origin: 50% 90%;
+  transition: transform 150ms ease-out;
+}
+.rider-body {
+  transform: translateY(calc((var(--crouch) + var(--pose-crouch)) * 6px))
+    rotate(calc(var(--lean) + var(--pose-lean)));
+  transform-origin: 50% 100%;
+  transition: transform 150ms ease-out;
+}
+.rider-legs {
+  transform: translateY(calc(var(--crouch) * 2px));
+  transition: transform 150ms ease-out;
+}
+.rider[data-pose="carve-left"] {
+  --pose-lean: -4deg;
+  --pose-crouch: 0.18;
+}
+.rider[data-pose="carve-right"] {
+  --pose-lean: 4deg;
+  --pose-crouch: 0.18;
+}
+.rider[data-pose="tuck"] {
+  --pose-crouch: 0.7;
+  --pose-tilt: 5deg;
+}
+.rider[data-pose="compress"] {
+  --pose-crouch: 0.85;
+}
+.rider[data-pose="unweight"] {
+  --pose-crouch: -0.5;
+}
+.rider[data-pose="switch"] {
+  --stance: -1;
+  --pose-lean: -3deg;
+}
+.rider[data-pose="brake"] {
+  --pose-crouch: 0.9;
+  --pose-tilt: 12deg;
+}
+.rider[data-pose="brake"] .rider-board {
+  transform: rotate(-11deg);
+  transition: transform 150ms ease-out;
+}
+.rider[data-pose="switch"] .rider-arms {
+  transform: translateX(-2px);
+}
+
+@keyframes rider-breathe {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-1.5px) rotate(-1deg);
+  }
+}
+@keyframes rider-goggle-adjust {
+  0%,
+  67%,
+  100% {
+    transform: translateX(0);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+  84% {
+    transform: translateX(0);
+  }
+}
+@keyframes rider-board-tap {
+  0%,
+  89%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  93% {
+    transform: rotate(-4deg) translateY(-1px);
+  }
+}
+.rider[data-pose="idle"] .rider-body {
+  animation: rider-breathe 2.8s ease-in-out infinite;
+}
+.rider[data-pose="idle"] .rider-goggles {
+  animation: rider-goggle-adjust 4.8s ease-in-out infinite;
+}
+.rider[data-pose="idle"] .rider-board {
+  animation: rider-board-tap 4.8s ease-in-out infinite;
+}
+
+/* Full-viewport, client-mounted canvas. Its only paint work happens inside
+   the rig's rAF; it neither receives input nor adds layout work. */
+.spray-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Gondola intro (§5): content is server-rendered; this is a one-shot CSS
+   sequence that resolves to its end state on the first scroll. */
+.gondola-intro {
+  position: relative;
+  min-height: 108px;
+  margin-top: 1.75rem;
+  overflow: hidden;
+  border-block: 1px solid color-mix(in srgb, var(--color-ink) 25%, transparent);
+  padding: 0.8rem 0 0.75rem 4.8rem;
+}
+.gondola-line {
+  position: absolute;
+  top: 27px;
+  left: -2rem;
+  width: 8rem;
+  border-top: 2px dashed color-mix(in srgb, var(--color-ink) 55%, transparent);
+  transform: rotate(-33deg);
+  transform-origin: left center;
+}
+.gondola-cabin {
+  position: absolute;
+  bottom: 17px;
+  left: 0.9rem;
+  width: 31px;
+  height: 24px;
+  border: 2px solid var(--color-ink);
+  border-radius: 4px;
+  background: var(--color-powder);
+  animation: gondola-arrive 6s cubic-bezier(0.22, 0.75, 0.25, 1) both;
+}
+.gondola-hanger {
+  position: absolute;
+  bottom: 100%;
+  left: 13px;
+  height: 18px;
+  border-left: 2px solid var(--color-ink);
+}
+.gondola-window {
+  position: absolute;
+  inset: 6px 6px 7px;
+  background: color-mix(in srgb, var(--color-bluebird) 65%, white);
+}
+.gondola-copy {
+  min-width: 0;
+}
+.gondola-credits {
+  margin-top: 0.4rem;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.gondola-credits li {
+  display: grid;
+  grid-template-columns: 4.3rem minmax(0, 1fr);
+  gap: 0.45rem;
+  animation: gondola-credit 6s ease-out both;
+  animation-delay: calc(var(--credit-index) * 0.42s);
+}
+.gondola-credits li > span:first-child {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-patrol-deep);
+}
+@keyframes gondola-arrive {
+  0% {
+    opacity: 0;
+    transform: translate(-26px, 42px);
+  }
+  12% {
+    opacity: 1;
+  }
+  78%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+@keyframes gondola-credit {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  32%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+html.has-scrolled .gondola-cabin,
+html.has-scrolled .gondola-credits li {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
 /*
  * Reveals (§7): hidden state exists only under html.js — no JS, everything
  * simply visible. Reduced motion: 200ms opacity-only, no translate.
@@ -77,4 +301,23 @@ html.js .reveal.revealed {
   background:
     radial-gradient(120% 90% at 20% 10%, rgb(34 48 58 / 0.03), transparent 60%),
     radial-gradient(130% 100% at 85% 90%, rgb(46 94 78 / 0.04), transparent 55%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rider-pose,
+  .rider-body,
+  .rider-legs,
+  .rider-board,
+  .rider-arms,
+  .rider-goggles,
+  .gondola-cabin,
+  .gondola-credits li {
+    animation: none !important;
+    transition: none !important;
+  }
+  .gondola-cabin,
+  .gondola-credits li {
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -25,6 +25,9 @@ export function Hud() {
       <div data-hud="theta" />
       <div data-hud="curve" />
       <div data-hud="vel" />
+      <div data-hud="pose" />
+      <div data-hud="lean" />
+      <div data-hud="spray" />
       <div data-hud="frame" />
       <div data-hud="dropped" />
       <div data-hud="state" />
@@ -43,6 +46,9 @@ export function writeHud(tel: RigTelemetry) {
   set("theta", `θ       ${tel.thetaDeg.toFixed(1)}°`);
   set("curve", `dθ/dy   ${tel.dThetaDy.toExponential(2)}`);
   set("vel", `vel     ${tel.velocity.toFixed(2)} px/ms`);
+  set("pose", `pose    ${tel.pose}`);
+  set("lean", `lean    ${tel.leanDeg.toFixed(1)}° / ${tel.crouch.toFixed(2)}`);
+  set("spray", `spray   ${tel.sprayActive ? "active" : "off"}`);
   set("frame", `frame   ${tel.frameMs.toFixed(1)} ms`);
   set("dropped", `dropped ${tel.dropped}`);
   set("state", tel.parked ? "parked" : "running");
