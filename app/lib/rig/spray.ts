@@ -3,6 +3,9 @@ import type { RiderPose } from "./pose";
 /** One pooled canvas effect, rendered by the rig's existing rAF (§5). */
 const PARTICLE_COUNT = 128;
 const FRAME_MS = 1000 / 60;
+const MAX_EMIT_PER_FRAME = 7;
+/** One-shot hockey-stop puff as the run lands at the base. */
+const BRAKE_BURST = 100;
 
 export interface SprayFrame {
   x: number;
@@ -105,16 +108,19 @@ export function createSpray(canvas: HTMLCanvasElement): Spray {
       const edge = Math.min(1, Math.abs(frame.curvature) / 55);
       const rate = Math.abs(frame.velocity) * edge * 4;
       carry += rate * (Math.min(50, Math.max(0, frame.frameMs)) / FRAME_MS);
-      const emitted = Math.min(7, Math.floor(carry));
+      // Never bank more than a single frame's worth: a long or dropped frame
+      // must not leave a backlog that keeps spraying after the rider stops.
+      if (carry > MAX_EMIT_PER_FRAME) carry = MAX_EMIT_PER_FRAME;
+      const emitted = Math.floor(carry);
       if (emitted) {
         carry -= emitted;
         spawn(frame, emitted);
       }
 
-      // The base gets the same emitter with a 10× burst multiplier (§5).
+      // The base gets a single burst as the run lands (§5).
       const braking = frame.pose === "brake";
       if (braking && !wasBraking) {
-        spawn(frame, Math.min(PARTICLE_COUNT, Math.max(10, emitted || 1) * 10));
+        spawn(frame, Math.min(PARTICLE_COUNT, BRAKE_BURST));
       }
       wasBraking = braking;
       return drawParticles(frame.frameMs);
