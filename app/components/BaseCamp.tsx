@@ -137,8 +137,8 @@ export function BaseCamp() {
           </h3>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/80">
             Built with React Router v7 (prerendered to static HTML), TypeScript strict,
-            and Tailwind CSS v4. The animation system is hand-rolled — zero animation
-            dependencies.{" "}
+            and Tailwind CSS v4. The scroll rig is hand-rolled — roughly 300 lines of
+            runtime code and zero animation dependencies.{" "}
             <a
               className="text-bluebird-deep underline underline-offset-2"
               href="https://github.com/aaronbrent/aaron-resume-site"

@@ -33,7 +33,7 @@ test.describe("document structure", () => {
   test("heading hierarchy: one h1, waypoint h2s in t/DOM order", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-    const h2Texts = await page.locator("section[id] > h2").allTextContents();
+    const h2Texts = await page.locator("[data-waypoint] h2").allTextContents();
     expect(h2Texts).toEqual(["SoFi", "Public.com", "Empirium", "NuvaLabs"]);
   });
 
@@ -43,6 +43,16 @@ test.describe("document structure", () => {
     await page.goto("/#nuvalabs");
     const section = page.locator("#nuvalabs");
     await expect(section).toBeInViewport();
+  });
+
+  test("the closed trail is deep-linkable and remains part of the printed document", async ({
+    page,
+  }) => {
+    await page.goto("/#closed-trail");
+    await expect(page.locator("#closed-trail")).toBeInViewport();
+    await page.emulateMedia({ media: "print" });
+    await expect(page.locator("#closed-trail")).toBeVisible();
+    await expect(page.locator("[data-print-hidden]").first()).toBeHidden();
   });
 
   test("keyboard traversal reaches contact links in document order", async ({ page }) => {
@@ -78,5 +88,17 @@ test.describe("document structure", () => {
     const parsed = JSON.parse(raw ?? "{}");
     expect(parsed["@type"]).toBe("Person");
     expect(parsed.name).toBe("Aaron Ellis");
+  });
+
+  test("social metadata uses the 1200×630 trail-map card", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+      "content",
+      "https://aaronellis.dev/og-trail-map.png",
+    );
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+      "content",
+      "summary_large_image",
+    );
   });
 });

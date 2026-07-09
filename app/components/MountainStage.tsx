@@ -1,5 +1,6 @@
 import { Rider } from "~/components/Rider";
 import { SprayCanvas } from "~/components/SprayCanvas";
+import { closedTrail } from "~/content/closed-trail";
 import type { TrailVariant } from "~/content/trails";
 import { trails } from "~/content/trails";
 import { waypoints } from "~/content/waypoints";
@@ -73,6 +74,62 @@ function Tree({ x, y, s }: { x: number; y: number; s: number }) {
   );
 }
 
+function ClosedTrailMarker({ x, y }: { x: number; y: number }) {
+  const ropeLeft = -58;
+  const ropeRight = 58;
+  return (
+    <g data-closed-trail-rope transform={`translate(${x} ${y})`}>
+      <line
+        x1={ropeLeft}
+        y1="-22"
+        x2={ropeLeft}
+        y2="25"
+        stroke="var(--color-patrol)"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <line
+        x1={ropeRight}
+        y1="-22"
+        x2={ropeRight}
+        y2="25"
+        stroke="var(--color-patrol)"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <path
+        d={`M ${ropeLeft} -12 Q 0 14 ${ropeRight} -12`}
+        fill="none"
+        stroke="var(--color-patrol)"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <rect
+        x="-39"
+        y="-40"
+        width="78"
+        height="23"
+        rx="2"
+        fill="var(--color-powder)"
+        stroke="var(--color-ink)"
+        strokeWidth="2"
+      />
+      <text
+        x="0"
+        y="-24"
+        textAnchor="middle"
+        fill="var(--color-patrol-deep)"
+        fontFamily="var(--font-display)"
+        fontSize="14"
+        fontWeight="700"
+        letterSpacing="1.5"
+      >
+        CLOSED
+      </text>
+    </g>
+  );
+}
+
 function TrailSvg({ variant, id }: { variant: TrailVariant; id: string }) {
   const [w, h] = variant.viewBox;
   const pts = samplePath(variant.d, 8);
@@ -114,6 +171,7 @@ function TrailSvg({ variant, id }: { variant: TrailVariant; id: string }) {
   const towers = 7;
 
   const markers = variant.markers;
+  const closedTrailPosition = { x: xAt(closedTrail.t * h), y: closedTrail.t * h };
   const wpById = new Map<string, (typeof waypoints)[number]>(
     waypoints.map((wp) => [wp.id, wp]),
   );
@@ -225,6 +283,8 @@ function TrailSvg({ variant, id }: { variant: TrailVariant; id: string }) {
           </g>
         );
       })}
+
+      <ClosedTrailMarker {...closedTrailPosition} />
     </svg>
   );
 }

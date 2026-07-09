@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { closedTrail } from "./closed-trail";
 import { gondolaCredits } from "./gondola";
 import { runMeta } from "./meta";
 import { skills } from "./skills";
@@ -71,6 +72,15 @@ describe("gondola", () => {
   it("keeps the ride short: 3–5 credits (§5)", () => {
     expect(gondolaCredits.length).toBeGreaterThanOrEqual(3);
     expect(gondolaCredits.length).toBeLessThanOrEqual(5);
+  });
+});
+
+describe("closed trail", () => {
+  it("is a concise, post-run story placed after the career waypoints", () => {
+    expect(closedTrail.id).toBe("closed-trail");
+    expect(closedTrail.t).toBeGreaterThan(waypoints.at(-1)!.t);
+    expect(closedTrail.t).toBeLessThan(1);
+    expect(closedTrail.story.length).toBeLessThanOrEqual(240);
   });
 });
 

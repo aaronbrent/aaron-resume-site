@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Aaron Ellis — trail map portfolio</title>
+  <desc id="desc">A printed trail map tracing Aaron Ellis's engineering career from summit to base camp.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#f8f3e8"/>
+      <stop offset="1" stop-color="#ece3cf"/>
+    </linearGradient>
+    <pattern id="contours" width="180" height="90" patternUnits="userSpaceOnUse">
+      <path d="M-20 55Q25 30 70 55T160 55T250 55" fill="none" stroke="#22303a" stroke-opacity=".08" stroke-width="1.5"/>
+      <path d="M-20 82Q30 61 80 82T180 82T250 82" fill="none" stroke="#22303a" stroke-opacity=".06" stroke-width="1"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#22303a" flood-opacity=".16"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#paper)"/>
+  <rect width="1200" height="630" fill="url(#contours)"/>
+  <rect x="20" y="20" width="1160" height="590" fill="none" stroke="#22303a" stroke-opacity=".7" stroke-width="2"/>
+  <rect x="28" y="28" width="1144" height="574" fill="none" stroke="#22303a" stroke-opacity=".22"/>
+
+  <g fill="#2e5e4e" opacity=".72">
+    <path d="m100 286 18-35 18 35zM137 365l16-31 16 31zM181 470l22-43 22 43zM1041 167l21-40 21 40zM1081 318l17-34 17 34zM1017 474l23-45 23 45z"/>
+  </g>
+
+  <g transform="translate(360 84)" filter="url(#shadow)">
+    <path d="M255 5 C458 23 478 75 286 118 C61 169 44 214 250 256 C462 298 475 348 286 392 C99 435 126 482 331 516" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="34"/>
+    <path d="M255 5 C458 23 478 75 286 118 C61 169 44 214 250 256 C462 298 475 348 286 392 C99 435 126 482 331 516" fill="none" stroke="#22303a" stroke-dasharray="18 12" stroke-linecap="round" stroke-width="5"/>
+    <g fill="#fff" stroke="#22303a" stroke-width="3">
+      <circle cx="350" cy="75" r="18"/>
+      <circle cx="135" cy="190" r="18"/>
+      <circle cx="350" cy="325" r="18"/>
+      <circle cx="205" cy="455" r="18"/>
+    </g>
+    <path d="m350 64 10 11-10 11-10-11z" fill="#22303a"/>
+    <path d="m135 179 10 11-10 11-10-11z" fill="#22303a"/>
+    <rect x="341" y="316" width="18" height="18" fill="#3d7db5"/>
+    <path d="m197 444 8 10 8-10 8 10-8 10 8 10-8 10-8-10-8 10 8-10z" fill="#22303a"/>
+    <g font-family="Arial, sans-serif" fill="#22303a" font-size="15" font-weight="700">
+      <text x="382" y="57">SOFI</text>
+      <text x="-8" y="195">PUBLIC.COM</text>
+      <text x="380" y="360">EMPIRIUM</text>
+      <text x="85" y="475">NUVALABS</text>
+    </g>
+  </g>
+
+  <g fill="#22303a" font-family="Arial, sans-serif">
+    <text x="72" y="104" font-size="18" font-weight="700" letter-spacing="3">AARON ELLIS</text>
+    <text x="72" y="132" font-size="14" letter-spacing="1.5">STAFF FULL-STACK ENGINEER</text>
+    <text x="72" y="540" font-size="13" letter-spacing="1.5">TRAIL MAP · SEASONS 2014–2026</text>
+    <text x="72" y="566" font-size="14">TypeScript · React · Node · consumer fintech</text>
+  </g>
+  <g transform="translate(890 510)">
+    <path d="M0 0h194v64H0z" fill="#fff" fill-opacity=".78" stroke="#22303a" stroke-opacity=".48"/>
+    <text x="14" y="24" fill="#22303a" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">BASE CAMP</text>
+    <text x="14" y="46" fill="#2c5d88" font-family="Arial, sans-serif" font-size="14">aaronellis.dev</text>
+  </g>
+</svg>

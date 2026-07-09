@@ -381,12 +381,13 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 - [ ] Re-run full perf gate on-device with spray active
 - **Exit:** the run lands — summit idle reads "ready," the stop reads "arrived," and frame budget still holds.
 
-### Phase 5 — Season opening (days 17–21) ✅ = launched
-- [ ] Colophon: stack, the "~300 lines, zero animation deps" story, link to repo
-- [ ] Closed trail: content in (pending open question #1), roped-off treatment with `patrol` rope + CLOSED sign
-- [ ] OG image (the trail map itself as the card); link-preview check in LinkedIn/iMessage/Slack
+### Phase 5 — Season opening (days 17–21)
+- [x] Colophon: stack, the "~300 lines, zero animation deps" story, link to repo
+- [x] Closed trail: My Menu Plans draft content in; roped-off treatment with `patrol` rope + CLOSED sign *(copy needs final owner read before launch)*
+- [x] OG image (the trail map itself as the card)
+- [ ] Link-preview check in LinkedIn/iMessage/Slack
 - [ ] Cross-browser pass: Safari iOS, Chrome Android, Firefox, Edge; find-in-page, print, deep links re-verified
-- [ ] Copy edit — the twee pass: cut anything needing explanation; one metaphor per screen max
+- [x] Copy edit — the twee pass: cut anything needing explanation; one metaphor per screen max
 - [ ] Domain + DNS on Cloudflare; analytics decision (open question #3)
 - [ ] Final on-device perf ceremony; Lighthouse from the field, not just CI
 - [ ] Launch: LinkedIn featured link, resume header URL, GitHub profile
