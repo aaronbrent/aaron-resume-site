@@ -12,6 +12,18 @@ import "./app.css";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  // Preloaded so font-display: optional almost always wins the first paint.
+  ...[
+    "/fonts/public-sans-latin-wght-normal.woff2",
+    "/fonts/barlow-condensed-latin-600-normal.woff2",
+    "/fonts/barlow-condensed-latin-700-normal.woff2",
+  ].map((href) => ({
+    rel: "preload" as const,
+    href,
+    as: "font" as const,
+    type: "font/woff2",
+    crossOrigin: "anonymous" as const,
+  })),
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

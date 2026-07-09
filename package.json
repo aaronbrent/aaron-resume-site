@@ -16,8 +16,6 @@
     "lighthouse": "lhci autorun"
   },
   "dependencies": {
-    "@fontsource-variable/public-sans": "^5.2.5",
-    "@fontsource/barlow-condensed": "^5.2.5",
     "@react-router/node": "^7.6.0",
     "isbot": "^5.1.36",
     "react": "^19.1.0",

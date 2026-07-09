@@ -343,14 +343,14 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 - **Exit:** CI green, page live, Lighthouse Perf ≥ 95 / A11y = 100 on the skeleton.
 
 ### Phase 1 — The document (days 2–4) ✅ = a complete, hireable resume site. If everything after this fell over, this ships.
-- [ ] Content model files (`waypoints.ts`, `gondola.ts`, `skills.ts`, `meta.ts`) — **final copy, not lorem**: claim/evidence/why-care per waypoint, gondola credits, trail names decided
-- [ ] `<SummitHero>`: name, positioning line ("Staff full-stack engineer — TypeScript, React, Node. 12 years of consumer fintech."), scroll cue. Skim test: name/level/specialty in <10s, no scroll
-- [ ] `<CareerDocument>` semantic sections, heading hierarchy, waypoint `id`s, deep links
-- [ ] `<BaseCamp>`: contact block (email, LinkedIn, GitHub), legend v1 (static), colophon stub
-- [ ] `/resume` route: ATS-clean, single column
-- [ ] Print stylesheet (both routes); generalized PDF committed + download link
-- [ ] Meta, OG tags, JSON-LD Person, sitemap, robots
-- [ ] Axe zero-violations; keyboard pass; JS-off and CSS-off manual pass
+- [x] Content model files (`waypoints.ts`, `gondola.ts`, `skills.ts`, `meta.ts`) — **final copy, not lorem**: claim/evidence/why-care per waypoint, gondola credits, trail names decided *(dates + LinkedIn URL drafted — need your confirmation)*
+- [x] `<SummitHero>`: name, positioning line ("Staff full-stack engineer — TypeScript, React, Node. 12 years of consumer fintech."), scroll cue. Skim test: name/level/specialty in <10s, no scroll
+- [x] `<CareerDocument>` semantic sections, heading hierarchy, waypoint `id`s, deep links
+- [x] `<BaseCamp>`: contact block (email, LinkedIn, GitHub), legend v1 (static), colophon stub
+- [x] `/resume` route: ATS-clean, single column
+- [x] Print stylesheet (both routes); generalized PDF committed + download link *(PDF is print-to-PDF of `/resume`; swap in your proven master anytime — open question #4)*
+- [x] Meta, OG tags, JSON-LD Person, sitemap, robots *(domain placeholder: aaronellis.dev — open question #2)*
+- [x] Axe zero-violations; keyboard pass; JS-off and CSS-off manual pass
 - **Exit:** you would send this URL to a recruiter today. Lighthouse gates hold.
 
 ### Phase 2 — The map (days 5–8) ✅ = the reduced-motion experience, complete

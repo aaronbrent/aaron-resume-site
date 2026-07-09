@@ -1,0 +1,44 @@
+/*
+ * Print stylesheet (PLAN §7): ink on white, URLs printed after links,
+ * sane page breaks, no mountain. Applies to both routes.
+ */
+@media print {
+  html {
+    background: #fff;
+    color: #000;
+  }
+
+  body {
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+
+  /* The visual layer never prints (Phase 2+: <MountainStage>, spray, cues). */
+  [data-print-hidden],
+  [aria-hidden="true"] {
+    display: none !important;
+  }
+
+  /* Print full URLs after external links; internal anchors stay clean. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    word-break: break-all;
+  }
+
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  section,
+  article {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+}

@@ -2,7 +2,7 @@
   "ci": {
     "collect": {
       "staticDistDir": "./build/client",
-      "url": ["http://localhost/"],
+      "url": ["http://localhost/", "http://localhost/resume/"],
       "numberOfRuns": 3,
       "settings": {
         "budgetsPath": "./budgets.json"
