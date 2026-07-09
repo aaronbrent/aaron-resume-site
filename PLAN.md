@@ -363,13 +363,13 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 - **Exit:** with the rig stubbed out, the site is a beautiful static piste map with revealing content. CLS = 0. This *is* the reduced-motion deliverable, finished early, not last.
 
 ### Phase 3 — The rig (days 9–12) ✅ = rider carves the mountain at 60fps on real hardware
-- [ ] LUT builder (+ Vitest against analytic curves: line, arc, S-curve — position/tangent/curvature within tolerance)
-- [ ] Scroll rig: passive listener, damped smoother, park/wake, transform writes
-- [ ] `useLayoutEffect` init sequence (§3) — deep-link entry, scroll restoration, bfcache verified by test plan
-- [ ] Rider follows path, board tangent to slope; breakpoint-crossing rebuild
-- [ ] Dev HUD (`?hud=1`)
-- [ ] iOS momentum feel check (real iPhone); toolbar collapse → zero rider jitter
-- [ ] **Gate: 6× throttle trace ≤ 8ms/frame; Moto G-class device 60fps sustained; fling test correct ("rockets down" = pass)**
+- [x] LUT builder (+ Vitest against analytic curves: line, arc, S-curve — position/tangent/curvature within tolerance)
+- [x] Scroll rig: passive listener, damped smoother, park/wake, transform writes
+- [x] `useLayoutEffect` init sequence (§3) — deep-link entry, scroll restoration, bfcache verified by test plan *(deep-link + scroll restoration covered by e2e; bfcache `pageshow` re-sync implemented, needs a manual back/forward pass in a real browser)*
+- [x] Rider follows path, board tangent to slope; breakpoint-crossing rebuild
+- [x] Dev HUD (`?hud=1`)
+- [ ] iOS momentum feel check (real iPhone); toolbar collapse → zero rider jitter — *needs your device*
+- [ ] **Gate: 6× throttle trace ≤ 8ms/frame; Moto G-class device 60fps sustained; fling test correct ("rockets down" = pass)** — *emulated 6× CPU throttle on Pixel-7 viewport: locked 60fps, median frame 16.7ms (vsync), 1/181 frames over 17.5ms during continuous scroll; real-hardware pass needs your devices*
 - **Exit:** the core fantasy works: scroll drives, rider carves, nothing hijacked.
 
 ### Phase 4 — Alive (days 13–16) ✅ = a character, not a sticker

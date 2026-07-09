@@ -7,6 +7,8 @@ import { contact, runMeta, site } from "~/content/meta";
 import { waypoints } from "~/content/waypoints";
 import { deriveRunHeightSvh } from "~/lib/run-height";
 import { useReveal } from "~/lib/use-reveal";
+import { useRig } from "~/lib/rig/use-rig";
+import { Hud, writeHud } from "~/components/Hud";
 
 export function meta() {
   return [
@@ -35,6 +37,7 @@ const runHeightSvh = deriveRunHeightSvh(runMeta, waypoints.length);
 
 export default function Index() {
   useReveal();
+  useRig(writeHud);
   return (
     <>
       <main id="main">
@@ -50,6 +53,7 @@ export default function Index() {
       </main>
       <BaseCamp />
       <PaperFrame />
+      <Hud />
       <div className="paper-texture" aria-hidden="true" data-print-hidden="true" />
       <script
         type="application/ld+json"

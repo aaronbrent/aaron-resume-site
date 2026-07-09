@@ -1,3 +1,4 @@
+import { Rider } from "~/components/Rider";
 import type { TrailVariant } from "~/content/trails";
 import { trails } from "~/content/trails";
 import { waypoints } from "~/content/waypoints";
@@ -111,7 +112,6 @@ function TrailSvg({ variant, id }: { variant: TrailVariant; id: string }) {
   const liftBottom = { x: 210, y: h - 160 };
   const towers = 7;
 
-  const summitX = pts[0]![0];
   const markers = variant.markers;
   const wpById = new Map<string, (typeof waypoints)[number]>(
     waypoints.map((wp) => [wp.id, wp]),
@@ -208,13 +208,6 @@ function TrailSvg({ variant, id }: { variant: TrailVariant; id: string }) {
         strokeLinecap="round"
       />
 
-      {/* parked rider at the drop-in (Phase 3 takes over the transforms) */}
-      <g transform={`translate(${summitX} 26)`} data-rider-parked="true">
-        <circle cx="0" cy="-26" r="7" fill="var(--color-ink)" />
-        <path d="M -3 -19 L 3 -19 L 6 -2 L -6 -2 Z" fill="var(--color-patrol)" />
-        <rect x="-16" y="2" width="32" height="4" rx="2" fill="var(--color-ink)" />
-      </g>
-
       {/* waypoint markers with difficulty geometry */}
       {markers.map((m) => {
         const wp = wpById.get(m.id);
@@ -245,6 +238,7 @@ export function MountainStage() {
     >
       <TrailSvg variant={trails.mobile} id="mobile" />
       <TrailSvg variant={trails.desktop} id="desktop" />
+      <Rider />
       {/* fold creases: the map lived a season folded in a jacket pocket */}
       <div className="fold-crease-h" />
       <div className="fold-crease-v" />
