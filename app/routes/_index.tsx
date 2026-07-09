@@ -1,7 +1,12 @@
 import { BaseCamp } from "~/components/BaseCamp";
 import { CareerDocument } from "~/components/CareerDocument";
+import { MountainStage } from "~/components/MountainStage";
+import { PaperFrame } from "~/components/PaperFrame";
 import { SummitHero } from "~/components/SummitHero";
-import { contact, site } from "~/content/meta";
+import { contact, runMeta, site } from "~/content/meta";
+import { waypoints } from "~/content/waypoints";
+import { deriveRunHeightSvh } from "~/lib/run-height";
+import { useReveal } from "~/lib/use-reveal";
 
 export function meta() {
   return [
@@ -26,14 +31,26 @@ const personJsonLd = {
   sameAs: [contact.github, contact.linkedin],
 };
 
+const runHeightSvh = deriveRunHeightSvh(runMeta, waypoints.length);
+
 export default function Index() {
+  useReveal();
   return (
     <>
       <main id="main">
-        <SummitHero />
-        <CareerDocument />
+        {/* The run: one tall container, world scroll (§1). The mountain is an
+            aria-hidden backdrop; the document lives on top of it. */}
+        <div className="run-container relative" style={{ height: `${runHeightSvh}svh` }}>
+          <MountainStage />
+          <div className="relative">
+            <SummitHero />
+          </div>
+          <CareerDocument />
+        </div>
       </main>
       <BaseCamp />
+      <PaperFrame />
+      <div className="paper-texture" aria-hidden="true" data-print-hidden="true" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}

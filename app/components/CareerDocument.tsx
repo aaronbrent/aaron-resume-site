@@ -1,9 +1,12 @@
 import { DifficultyIcon } from "~/components/DifficultyIcon";
+import { runMeta } from "~/content/meta";
 import { skills } from "~/content/skills";
 import type { Waypoint } from "~/content/types";
 import { waypoints } from "~/content/waypoints";
+import { deriveRunHeightSvh } from "~/lib/run-height";
 
 const skillLabel = new Map(skills.map((s) => [s.id, s.label]));
+const runHeightSvh = deriveRunHeightSvh(runMeta, waypoints.length);
 
 function formatPeriod(period: Waypoint["period"]): string {
   const fmt = (ym: string) => {
@@ -20,7 +23,9 @@ function WaypointSection({ waypoint }: { waypoint: Waypoint }) {
     <section
       id={waypoint.id}
       aria-labelledby={`${waypoint.id}-title`}
-      className="scroll-mt-24 border-t border-ink/15 py-14"
+      className={`reveal scroll-mt-24 border border-ink/20 bg-powder/95 p-6 shadow-sm sm:p-8 ${
+        waypoint.side === "right" ? "md:col-start-2" : "md:col-start-1"
+      }`}
     >
       <p className="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-[0.2em]">
         <DifficultyIcon difficulty={waypoint.difficulty} />
@@ -35,18 +40,16 @@ function WaypointSection({ waypoint }: { waypoint: Waypoint }) {
       <p className="mt-1 text-sm text-ink/70">
         {waypoint.role} · {formatPeriod(waypoint.period)}
       </p>
-      <p className="mt-5 max-w-2xl text-lg font-semibold leading-relaxed">
-        {waypoint.claim}
-      </p>
-      <ul className="mt-4 max-w-2xl list-disc space-y-2 pl-5 leading-relaxed">
+      <p className="mt-5 text-lg font-semibold leading-relaxed">{waypoint.claim}</p>
+      <ul className="mt-4 list-disc space-y-2 pl-5 leading-relaxed">
         {waypoint.evidence.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
-      <p className="mt-5 max-w-2xl border-l-4 border-patrol pl-4 italic leading-relaxed">
+      <p className="mt-5 border-l-4 border-patrol pl-4 italic leading-relaxed">
         {waypoint.whyCare}
       </p>
-      <ul className="mt-5 flex max-w-2xl flex-wrap gap-2" aria-label="Skills used">
+      <ul className="mt-5 flex flex-wrap gap-2" aria-label="Skills used">
         {waypoint.tech.map((id) => (
           <li
             key={id}
@@ -60,13 +63,26 @@ function WaypointSection({ waypoint }: { waypoint: Waypoint }) {
   );
 }
 
+/**
+ * The run (§2): waypoint sections positioned at t × runHeight, exactly where
+ * the SVG marker sits — pure data, no client facts. DOM order = t order.
+ * Desktop honors `side`; mobile is always a full-width card.
+ */
 export function CareerDocument() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-6">
+    <>
       <h2 className="sr-only">The run — career history</h2>
       {waypoints.map((waypoint) => (
-        <WaypointSection key={waypoint.id} waypoint={waypoint} />
+        <div
+          key={waypoint.id}
+          className="waypoint-slot absolute inset-x-0"
+          style={{ top: `calc(${waypoint.t} * ${runHeightSvh}svh)` }}
+        >
+          <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 sm:px-8 md:grid-cols-2 md:px-14">
+            <WaypointSection waypoint={waypoint} />
+          </div>
+        </div>
       ))}
-    </div>
+    </>
   );
 }

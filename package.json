@@ -13,7 +13,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "lighthouse": "lhci autorun"
+    "lighthouse": "lhci autorun",
+    "trail:gen": "node scripts/trail-gen.ts",
+    "trail:validate": "node scripts/trail-validate.ts",
+    "gen:template": "node scripts/gen-figma-template.ts"
   },
   "dependencies": {
     "@react-router/node": "^7.6.0",

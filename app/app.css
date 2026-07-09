@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./print.css";
+@import "./stage.css";
 
 /*
  * Design tokens (PLAN §8) — the printed-piste-map register.

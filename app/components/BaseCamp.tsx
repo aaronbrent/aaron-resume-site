@@ -88,7 +88,10 @@ export function BaseCamp() {
           </ul>
         </section>
 
-        <section aria-labelledby="legend-title" className="mt-10">
+        <section
+          aria-labelledby="legend-title"
+          className="mt-10 border border-ink/40 bg-powder p-6"
+        >
           <h3
             id="legend-title"
             className="font-display text-lg font-semibold uppercase tracking-[0.15em] text-evergreen"

@@ -36,6 +36,15 @@
     break-inside: avoid;
   }
 
+  /* The run collapses to a plain document: no 880svh canvas, no absolute
+     placement — sections stack in DOM (= narrative) order. */
+  .run-container {
+    height: auto !important;
+  }
+  .waypoint-slot {
+    position: static !important;
+  }
+
   h1,
   h2,
   h3 {

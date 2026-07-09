@@ -35,6 +35,9 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Trail validation (§2)
+        run: pnpm trail:validate
+
       - name: Build (static prerender)
         run: pnpm build
 

@@ -1,4 +1,4 @@
-import type { Waypoint } from "./types";
+import type { Waypoint } from "./types.ts";
 
 /**
  * The four waypoints (PLAN §4). Difficulty rates the terrain — technical depth

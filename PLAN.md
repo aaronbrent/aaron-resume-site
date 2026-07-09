@@ -354,12 +354,12 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 - **Exit:** you would send this URL to a recruiter today. Lighthouse gates hold.
 
 ### Phase 2 — The map (days 5–8) ✅ = the reduced-motion experience, complete
-- [ ] Figma template generation script; author mobile + desktop trail paths; normalize + validate scripts in CI
-- [ ] `<TrailMap>`: terrain shapes, treeline, both paths (CSS-toggled), waypoint markers + difficulty icons, lift line for the gondola
-- [ ] Paper frame signature: border, cartouche, grid refs, fold-crease, legend in its corner
-- [ ] Section reveal system (IO + CSS, `html.js`-gated, no-JS-safe)
-- [ ] Waypoint sections visually keyed to markers (`side` on desktop, cards on mobile); scroll height derived from `TrailMeta`
-- [ ] `prefers-reduced-motion` complete: static map, parked rider + gondola, opacity-only reveals
+- [x] Figma template generation script; author mobile + desktop trail paths; normalize + validate scripts in CI *(paths authored in code via parameterized generator — the §0 primary path; `gen:template` emits the Figma template for hand-tuning later, `trail:normalize` only needed if a Figma-drawn path ever replaces the generated one)*
+- [x] `<TrailMap>`: terrain shapes, treeline, both paths (CSS-toggled), waypoint markers + difficulty icons, lift line for the gondola
+- [x] Paper frame signature: border, cartouche, grid refs, fold-crease, legend in its corner
+- [x] Section reveal system (IO + CSS, `html.js`-gated, no-JS-safe)
+- [x] Waypoint sections visually keyed to markers (`side` on desktop, cards on mobile); scroll height derived from `TrailMeta`
+- [x] `prefers-reduced-motion` complete: static map, parked rider + gondola, opacity-only reveals
 - **Exit:** with the rig stubbed out, the site is a beautiful static piste map with revealing content. CLS = 0. This *is* the reduced-motion deliverable, finished early, not last.
 
 ### Phase 3 — The rig (days 9–12) ✅ = rider carves the mountain at 60fps on real hardware
