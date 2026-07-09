@@ -1,0 +1,80 @@
+/*
+ * Mountain stage + reveal styles (PLAN §2, §7).
+ */
+
+/* Both trail variants are server-rendered; CSS displays exactly one (§2).
+   No JS decision, no hydration mismatch. */
+.trail-svg-desktop {
+  display: none;
+}
+@media (min-width: 768px) {
+  .trail-svg-mobile {
+    display: none;
+  }
+  .trail-svg-desktop {
+    display: block;
+  }
+}
+
+/*
+ * Reveals (§7): hidden state exists only under html.js — no JS, everything
+ * simply visible. Reduced motion: 200ms opacity-only, no translate.
+ */
+html.js .reveal {
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+html.js .reveal.revealed {
+  opacity: 1;
+  translate: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html.js .reveal {
+    translate: 0 18px;
+    transition:
+      opacity 450ms ease-out,
+      translate 450ms ease-out;
+  }
+}
+
+/* Fold creases: the map lived a season folded in a jacket pocket (§8). */
+.fold-crease-h,
+.fold-crease-v {
+  position: absolute;
+  pointer-events: none;
+}
+.fold-crease-h {
+  left: 0;
+  right: 0;
+  top: 33%;
+  height: 3px;
+  background: linear-gradient(
+    to bottom,
+    rgb(34 48 58 / 0.06),
+    rgb(255 255 255 / 0.5),
+    rgb(34 48 58 / 0.06)
+  );
+}
+.fold-crease-v {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  background: linear-gradient(
+    to right,
+    rgb(34 48 58 / 0.05),
+    rgb(255 255 255 / 0.4),
+    rgb(34 48 58 / 0.05)
+  );
+}
+
+/* Aged-paper wash: two broad, cheap radial gradients. */
+.paper-texture {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+  background:
+    radial-gradient(120% 90% at 20% 10%, rgb(34 48 58 / 0.03), transparent 60%),
+    radial-gradient(130% 100% at 85% 90%, rgb(46 94 78 / 0.04), transparent 55%);
+}

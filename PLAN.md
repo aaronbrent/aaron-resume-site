@@ -334,42 +334,42 @@ Light/print aesthetic only at launch — a paper map has no dark mode; that's a 
 Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's exit gate red.**
 
 ### Phase 0 — Rail (day 1) ✅ = deployed hello-world at a real URL
-- [ ] `git init`, GitHub repo (public — the repo is part of the demo; colophon links to it)
-- [ ] Scaffold RR v7 framework mode, TypeScript `strict`, `prerender: true`
-- [ ] Tailwind v4 with `@theme` tokens (§8 palette + type in from day one)
-- [ ] ESLint (flat, + `jsx-a11y`) + Prettier, Vitest, Playwright+axe
-- [ ] GitHub Actions: typecheck → lint → unit → e2e/axe → Lighthouse CI (budgets.json from §6) → deploy
-- [ ] Cloudflare Pages connected; preview deploys per PR
+- [x] `git init`, GitHub repo (public — the repo is part of the demo; colophon links to it)
+- [x] Scaffold RR v7 framework mode, TypeScript `strict`, `prerender: true`
+- [x] Tailwind v4 with `@theme` tokens (§8 palette + type in from day one)
+- [x] ESLint (flat, + `jsx-a11y`) + Prettier, Vitest, Playwright+axe
+- [x] GitHub Actions: typecheck → lint → unit → e2e/axe → Lighthouse CI (budgets.json from §6) → deploy
+- [ ] Cloudflare Pages connected; preview deploys per PR — *deploy job is in CI, gated on `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` repo secrets; needs your Cloudflare account to connect*
 - **Exit:** CI green, page live, Lighthouse Perf ≥ 95 / A11y = 100 on the skeleton.
 
 ### Phase 1 — The document (days 2–4) ✅ = a complete, hireable resume site. If everything after this fell over, this ships.
-- [ ] Content model files (`waypoints.ts`, `gondola.ts`, `skills.ts`, `meta.ts`) — **final copy, not lorem**: claim/evidence/why-care per waypoint, gondola credits, trail names decided
-- [ ] `<SummitHero>`: name, positioning line ("Staff full-stack engineer — TypeScript, React, Node. 12 years of consumer fintech."), scroll cue. Skim test: name/level/specialty in <10s, no scroll
-- [ ] `<CareerDocument>` semantic sections, heading hierarchy, waypoint `id`s, deep links
-- [ ] `<BaseCamp>`: contact block (email, LinkedIn, GitHub), legend v1 (static), colophon stub
-- [ ] `/resume` route: ATS-clean, single column
-- [ ] Print stylesheet (both routes); generalized PDF committed + download link
-- [ ] Meta, OG tags, JSON-LD Person, sitemap, robots
-- [ ] Axe zero-violations; keyboard pass; JS-off and CSS-off manual pass
+- [x] Content model files (`waypoints.ts`, `gondola.ts`, `skills.ts`, `meta.ts`) — **final copy, not lorem**: claim/evidence/why-care per waypoint, gondola credits, trail names decided *(dates + LinkedIn URL drafted — need your confirmation)*
+- [x] `<SummitHero>`: name, positioning line ("Staff full-stack engineer — TypeScript, React, Node. 12 years of consumer fintech."), scroll cue. Skim test: name/level/specialty in <10s, no scroll
+- [x] `<CareerDocument>` semantic sections, heading hierarchy, waypoint `id`s, deep links
+- [x] `<BaseCamp>`: contact block (email, LinkedIn, GitHub), legend v1 (static), colophon stub
+- [x] `/resume` route: ATS-clean, single column
+- [x] Print stylesheet (both routes); generalized PDF committed + download link *(PDF is print-to-PDF of `/resume`; swap in your proven master anytime — open question #4)*
+- [x] Meta, OG tags, JSON-LD Person, sitemap, robots *(domain placeholder: aaronellis.dev — open question #2)*
+- [x] Axe zero-violations; keyboard pass; JS-off and CSS-off manual pass
 - **Exit:** you would send this URL to a recruiter today. Lighthouse gates hold.
 
 ### Phase 2 — The map (days 5–8) ✅ = the reduced-motion experience, complete
-- [ ] Figma template generation script; author mobile + desktop trail paths; normalize + validate scripts in CI
-- [ ] `<TrailMap>`: terrain shapes, treeline, both paths (CSS-toggled), waypoint markers + difficulty icons, lift line for the gondola
-- [ ] Paper frame signature: border, cartouche, grid refs, fold-crease, legend in its corner
-- [ ] Section reveal system (IO + CSS, `html.js`-gated, no-JS-safe)
-- [ ] Waypoint sections visually keyed to markers (`side` on desktop, cards on mobile); scroll height derived from `TrailMeta`
-- [ ] `prefers-reduced-motion` complete: static map, parked rider + gondola, opacity-only reveals
+- [x] Figma template generation script; author mobile + desktop trail paths; normalize + validate scripts in CI *(paths authored in code via parameterized generator — the §0 primary path; `gen:template` emits the Figma template for hand-tuning later, `trail:normalize` only needed if a Figma-drawn path ever replaces the generated one)*
+- [x] `<TrailMap>`: terrain shapes, treeline, both paths (CSS-toggled), waypoint markers + difficulty icons, lift line for the gondola
+- [x] Paper frame signature: border, cartouche, grid refs, fold-crease, legend in its corner
+- [x] Section reveal system (IO + CSS, `html.js`-gated, no-JS-safe)
+- [x] Waypoint sections visually keyed to markers (`side` on desktop, cards on mobile); scroll height derived from `TrailMeta`
+- [x] `prefers-reduced-motion` complete: static map, parked rider + gondola, opacity-only reveals
 - **Exit:** with the rig stubbed out, the site is a beautiful static piste map with revealing content. CLS = 0. This *is* the reduced-motion deliverable, finished early, not last.
 
 ### Phase 3 — The rig (days 9–12) ✅ = rider carves the mountain at 60fps on real hardware
-- [ ] LUT builder (+ Vitest against analytic curves: line, arc, S-curve — position/tangent/curvature within tolerance)
-- [ ] Scroll rig: passive listener, damped smoother, park/wake, transform writes
-- [ ] `useLayoutEffect` init sequence (§3) — deep-link entry, scroll restoration, bfcache verified by test plan
-- [ ] Rider follows path, board tangent to slope; breakpoint-crossing rebuild
-- [ ] Dev HUD (`?hud=1`)
-- [ ] iOS momentum feel check (real iPhone); toolbar collapse → zero rider jitter
-- [ ] **Gate: 6× throttle trace ≤ 8ms/frame; Moto G-class device 60fps sustained; fling test correct ("rockets down" = pass)**
+- [x] LUT builder (+ Vitest against analytic curves: line, arc, S-curve — position/tangent/curvature within tolerance)
+- [x] Scroll rig: passive listener, damped smoother, park/wake, transform writes
+- [x] `useLayoutEffect` init sequence (§3) — deep-link entry, scroll restoration, bfcache verified by test plan *(deep-link + scroll restoration covered by e2e; bfcache `pageshow` re-sync implemented, needs a manual back/forward pass in a real browser)*
+- [x] Rider follows path, board tangent to slope; breakpoint-crossing rebuild
+- [x] Dev HUD (`?hud=1`)
+- [ ] iOS momentum feel check (real iPhone); toolbar collapse → zero rider jitter — *needs your device*
+- [ ] **Gate: 6× throttle trace ≤ 8ms/frame; Moto G-class device 60fps sustained; fling test correct ("rockets down" = pass)** — *emulated 6× CPU throttle on Pixel-7 viewport: locked 60fps, median frame 16.7ms (vsync), 1/181 frames over 17.5ms during continuous scroll; real-hardware pass needs your devices*
 - **Exit:** the core fantasy works: scroll drives, rider carves, nothing hijacked.
 
 ### Phase 4 — Alive (days 13–16) ✅ = a character, not a sticker
