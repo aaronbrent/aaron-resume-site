@@ -6,9 +6,10 @@
 import { chromium } from "@playwright/test";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { extname, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("../build/client", import.meta.url).pathname;
+const root = resolve(fileURLToPath(new URL("../build/client/", import.meta.url)));
 const types = {
   ".html": "text/html",
   ".css": "text/css",
@@ -17,14 +18,25 @@ const types = {
   ".svg": "image/svg+xml",
 };
 
+function resolveStaticPath(reqUrl) {
+  const url = new URL(reqUrl ?? "/", "http://localhost");
+  let pathname = decodeURIComponent(url.pathname);
+  if (pathname.endsWith("/")) pathname += "index.html";
+  if (!extname(pathname)) pathname += "/index.html";
+
+  const fullPath = resolve(root, pathname.replace(/^\/+/, ""));
+  if (fullPath !== root && !fullPath.startsWith(root + sep)) {
+    throw new Error("request path escapes static root");
+  }
+  return { fullPath, ext: extname(pathname) };
+}
+
 const server = createServer(async (req, res) => {
-  let path = req.url.split("?")[0];
-  if (path.endsWith("/")) path += "index.html";
-  if (!extname(path)) path += "/index.html";
   try {
-    const body = await readFile(join(root, path));
+    const { fullPath, ext } = resolveStaticPath(req.url);
+    const body = await readFile(fullPath);
     res.writeHead(200, {
-      "content-type": types[extname(path)] ?? "application/octet-stream",
+      "content-type": types[ext] ?? "application/octet-stream",
     });
     res.end(body);
   } catch {

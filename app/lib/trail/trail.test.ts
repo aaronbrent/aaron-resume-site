@@ -17,9 +17,17 @@ describe("generated trails", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("regenerating from config reproduces the committed paths exactly", () => {
-    expect(generateTrail(trailConfigs.mobile).d).toBe(trailMobile.d);
-    expect(generateTrail(trailConfigs.desktop).d).toBe(trailDesktop.d);
+  it("regenerating from config reproduces the committed trail artifacts exactly", () => {
+    expect(generateTrail(trailConfigs.mobile)).toEqual({
+      d: trailMobile.d,
+      viewBox: trailMobile.viewBox,
+      markers: trailMobile.markers,
+    });
+    expect(generateTrail(trailConfigs.desktop)).toEqual({
+      d: trailDesktop.d,
+      viewBox: trailDesktop.viewBox,
+      markers: trailDesktop.markers,
+    });
   });
 
   it("markers sit at t × height with one per waypoint", () => {
@@ -55,6 +63,12 @@ describe("validator catches authoring violations", () => {
     const r = validateTrail({ d, viewBox: [1000, 300], markers });
     expect(r.ok).toBe(false);
     expect(r.errors.join()).toMatch(/x out of bounds/);
+  });
+
+  it("rejects paths without drawable cubic segments", () => {
+    const r = validateTrail({ d: "M 500 0", viewBox: [1000, 300], markers });
+    expect(r.ok).toBe(false);
+    expect(r.errors.join()).toMatch(/drawable cubic segment/);
   });
 
   it("rejects a kink (curvature spike)", () => {

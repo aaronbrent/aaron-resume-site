@@ -122,6 +122,20 @@ export function validateTrail(trail: TrailToValidate): ValidationResult {
       },
     };
   }
+  if (pts.length < 2) {
+    return {
+      ok: false,
+      errors: ["path must contain at least one drawable cubic segment"],
+      stats: {
+        samples: pts.length,
+        minAngleDeg: 0,
+        steepFraction: 0,
+        maxTurnDegPerSample: 0,
+        xMin: 0,
+        xMax: 0,
+      },
+    };
+  }
 
   let minAngle = 90;
   let steep = 0;

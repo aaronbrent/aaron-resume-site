@@ -28,13 +28,13 @@ for (const [bp, config] of Object.entries(trailConfigs)) {
   if (committed.sourceHash !== expectedHash) {
     failed = true;
     console.error(
-      `✗ ${bp} stale: sourceHash ${committed.sourceHash} != config ${expectedHash}. Run: node scripts/trail-gen.ts`,
+      `✗ ${bp} stale: sourceHash ${committed.sourceHash} != config ${expectedHash}. Run: pnpm trail:gen`,
     );
   }
-  const regenerated = generateTrail(config);
-  if (regenerated.d !== committed.d) {
+  const regenerated = { ...generateTrail(config), sourceHash: expectedHash };
+  if (JSON.stringify(regenerated) !== JSON.stringify(committed)) {
     failed = true;
-    console.error(`✗ ${bp} drift: regenerating produces a different path`);
+    console.error(`✗ ${bp} drift: regenerating produces a different committed artifact`);
   }
 }
 process.exit(failed ? 1 : 0);
