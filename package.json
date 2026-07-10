@@ -17,6 +17,7 @@
     "trail:gen": "tsx scripts/trail-gen.ts",
     "trail:validate": "tsx scripts/trail-validate.ts",
     "line:validate": "tsx scripts/line-validate.ts",
+    "bundle:check": "tsx scripts/check-bundle.ts",
     "gen:template": "tsx scripts/gen-figma-template.ts"
   },
   "dependencies": {

@@ -38,8 +38,14 @@ jobs:
       - name: Trail validation (§2)
         run: pnpm trail:validate
 
+      - name: Line validation (PLAN-3D §2)
+        run: pnpm line:validate
+
       - name: Build (static prerender)
         run: pnpm build
+
+      - name: Bundle budgets (PLAN-3D §7)
+        run: pnpm bundle:check
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
