@@ -129,6 +129,32 @@
   animation: rider-board-tap 4.8s ease-in-out infinite;
 }
 
+/* Tier 2 (PLAN-3D §4/§6): the fixed 3D viewport. It fades in behind the
+   document once the rig renders its first frame; until then the printed map
+   is the loading state. The 2D stage leaves the DOM only after that frame,
+   so a scroll before the chunk is warm still rides the map. */
+.run-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.run-canvas[data-ready="true"] {
+  opacity: 1;
+}
+html[data-tier="ride"][data-ride-ready="true"] [data-stage-2d] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .run-canvas {
+    transition: none;
+  }
+}
+
 /* Full-viewport, client-mounted canvas. Its only paint work happens inside
    the rig's rAF; it neither receives input nor adds layout work. */
 .spray-canvas {

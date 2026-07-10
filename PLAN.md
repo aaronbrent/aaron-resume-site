@@ -1,5 +1,7 @@
 # PLAN.md — Scroll-Driven Snowboarder Portfolio
 
+> **v2 direction:** the major 3D POV redesign is planned in [PLAN-3D.md](./PLAN-3D.md). This document remains the record of the shipped v1, which PLAN-3D keeps alive as the fallback tier.
+
 **Project:** aaronellis trail map — a personal site where the career is a snowboard run down a mountain.
 **Audience:** Hiring managers/recruiters for SE, sales engineering, DevRel, and TAM roles. Mostly non-engineers, arriving from LinkedIn on phones.
 **Appetite:** 2–3 weeks, phased. Phase 1 ships a complete, hireable site by itself; everything after is compounding.
@@ -419,7 +421,7 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 4. **The committed PDF.** The NerdWallet version is tailored to one employer; the site should serve a generalized master. Confirm you'll produce one (same bones, employer-neutral summary), or I'll spec the delta.
 5. **Gondola credits copy.** Which personal projects ride up alongside freeCodeCamp / V School / My Menu Plans? 3–5 lines max; the gondola is short.
 6. **Trail names.** "The Rewrite," "Corduroy," "The Traverse," "Prime Face" are proposals with reasoning (§4). Veto or rename freely — they're your runs.
-7. **Post-launch candidates (explicitly out of scope now):** night-skiing dark mode; Playwright print-to-PDF pipeline; `scroll-timeline` parallax enhancement for far-terrain layers.
+7. **Post-launch candidates (explicitly out of scope now):** night-skiing dark mode; Playwright print-to-PDF pipeline; `scroll-timeline` parallax enhancement for far-terrain layers; ride audio for the v2 POV run (wind + carve loop, muted by default — specced in [PLAN-3D.md](./PLAN-3D.md) §12).
 
 ---
 

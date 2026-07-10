@@ -1,4 +1,5 @@
 import { DifficultyIcon, difficultyLabels } from "~/components/DifficultyIcon";
+import { TierToggle } from "~/components/TierToggle";
 import { gondolaCredits } from "~/content/gondola";
 import { contact } from "~/content/meta";
 import { skillGroupLabels, skills } from "~/content/skills";
@@ -12,7 +13,7 @@ export function BaseCamp() {
     <footer
       id="base-camp"
       aria-labelledby="base-camp-title"
-      className="mt-14 border-t-2 border-ink/25 bg-powder/50"
+      className="relative mt-14 border-t-2 border-ink/25 bg-powder/50"
     >
       <div className="mx-auto w-full max-w-3xl px-6 py-14">
         <h2
@@ -126,6 +127,7 @@ export function BaseCamp() {
               </div>
             ))}
           </div>
+          <TierToggle />
         </section>
 
         <section aria-labelledby="colophon-title" className="mt-10">
