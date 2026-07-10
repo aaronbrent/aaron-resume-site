@@ -65,4 +65,10 @@ test.describe("the map (Phase 2)", () => {
     await page.goto("/#nuvalabs");
     await expect(page.locator("section#nuvalabs")).toBeInViewport();
   });
+
+  test("the closed trail has a visible patrol rope and CLOSED sign", async ({ page }) => {
+    await page.goto("/#closed-trail");
+    await expect(page.locator("[data-closed-trail-rope]:visible")).toBeVisible();
+    await expect(page.locator("[data-closed-trail-card]")).toContainText("My Menu Plans");
+  });
 });

@@ -56,8 +56,11 @@ export interface GondolaCredit {
   label: string;
 }
 
-/** Slot reserved — content TBD (PLAN open question #1) */
+/** A short, honest postscript to the career run (PLAN Phase 5). */
 export interface ClosedTrail {
+  /** Anchor + visual-map position. Kept after the career waypoints. */
+  id: string;
+  t: number;
   trailName: string;
   story: string;
   period: string;

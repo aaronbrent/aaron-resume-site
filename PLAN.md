@@ -82,18 +82,19 @@ Content reveals are not the rig's job: server-rendered sections get a one-time I
 - **Scroll height is derived, never magic:**
 
 ```
-runHeight = INTRO(100svh) + waypoints × DWELL(160svh) + OUTRO(140svh)
-          = 100 + 4×160 + 140 = 880svh   (~8.8 screens, ~60–90s at a natural pace)
+runHeight = INTRO(100svh) + waypoints × DWELL(160svh) + OUTRO(220svh)
+          = 100 + 4×160 + 220 = 960svh   (~9.6 screens, ~65–100s at a natural pace)
 ```
 
 - `DWELL` is the one tuning constant. Adding a 5th waypoint = add an object, run regenerates, page gets 160svh taller. Waypoint `t` values position both the SVG marker **and** the document section (via `top` spacing derived from `Δt × runHeight`, computed from pure data at build — no client facts, no hydration risk). DOM order = t order = visual order, always.
+- `OUTRO` is the runout below the last waypoint. Phase 5's closed-trail postscript lives here, so it must clear the tallest waypoint card once the run collapses to a single column on mobile — hence 220svh, not 140. The trail viewBox heights track `runHeight` (regenerate on change) so the non-uniform stretch stays near-square.
 
 ### Two paths, desktop and mobile — yes, they're different lines
 
 A 1440px mountain and a 390px portrait phone want different runs: mobile needs a taller, tighter line with more switchbacks to stay inside 1000 normalized units of width.
 
-- `trail.mobile.ts` — viewBox ≈ 1000 × 18,600 (390×844 device, 880svh). Portrait-first: this is the primary artifact.
-- `trail.desktop.ts` — viewBox ≈ 1000 × 5,400 (1440×900, 880svh). Wider carves, longer traverses.
+- `trail.mobile.ts` — viewBox ≈ 1000 × 20,291 (390×844 device, 960svh). Portrait-first: this is the primary artifact.
+- `trail.desktop.ts` — viewBox ≈ 1000 × 5,891 (1440×900, 960svh). Wider carves, longer traverses.
 
 **Swap without hydration mismatch:** both `<path>` elements are server-rendered into the SVG; a CSS media query displays exactly one. No JS decision, no mismatch, cost is one extra path string (~2 kB). The rig picks its LUT source via `matchMedia` and rebuilds only on an actual breakpoint crossing (a discrete, rare event where a one-frame re-init is acceptable).
 
@@ -381,12 +382,13 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 - [ ] Re-run full perf gate on-device with spray active
 - **Exit:** the run lands — summit idle reads "ready," the stop reads "arrived," and frame budget still holds.
 
-### Phase 5 — Season opening (days 17–21) ✅ = launched
-- [ ] Colophon: stack, the "~300 lines, zero animation deps" story, link to repo
-- [ ] Closed trail: content in (pending open question #1), roped-off treatment with `patrol` rope + CLOSED sign
-- [ ] OG image (the trail map itself as the card); link-preview check in LinkedIn/iMessage/Slack
+### Phase 5 — Season opening (days 17–21)
+- [x] Colophon: stack, the "~300 lines, zero animation deps" story, link to repo
+- [x] Closed trail: My Menu Plans draft content in; roped-off treatment with `patrol` rope + CLOSED sign *(copy needs final owner read before launch)*
+- [x] OG image (the trail map itself as the card)
+- [ ] Link-preview check in LinkedIn/iMessage/Slack
 - [ ] Cross-browser pass: Safari iOS, Chrome Android, Firefox, Edge; find-in-page, print, deep links re-verified
-- [ ] Copy edit — the twee pass: cut anything needing explanation; one metaphor per screen max
+- [x] Copy edit — the twee pass: cut anything needing explanation; one metaphor per screen max
 - [ ] Domain + DNS on Cloudflare; analytics decision (open question #3)
 - [ ] Final on-device perf ceremony; Lighthouse from the field, not just CI
 - [ ] Launch: LinkedIn featured link, resume header URL, GitHub profile

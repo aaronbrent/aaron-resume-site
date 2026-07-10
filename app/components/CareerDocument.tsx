@@ -1,4 +1,5 @@
 import { DifficultyIcon } from "~/components/DifficultyIcon";
+import { closedTrail } from "~/content/closed-trail";
 import { runMeta } from "~/content/meta";
 import { skills } from "~/content/skills";
 import type { Waypoint } from "~/content/types";
@@ -22,6 +23,7 @@ function WaypointSection({ waypoint }: { waypoint: Waypoint }) {
   return (
     <section
       id={waypoint.id}
+      data-waypoint
       aria-labelledby={`${waypoint.id}-title`}
       className={`reveal scroll-mt-24 border border-ink/20 bg-powder/95 p-6 shadow-sm sm:p-8 ${
         waypoint.side === "right" ? "md:col-start-2" : "md:col-start-1"
@@ -63,6 +65,29 @@ function WaypointSection({ waypoint }: { waypoint: Waypoint }) {
   );
 }
 
+function ClosedTrailSection() {
+  return (
+    <section
+      id={closedTrail.id}
+      data-closed-trail-card
+      aria-labelledby={`${closedTrail.id}-title`}
+      className="closed-trail-card reveal scroll-mt-24 border-2 border-patrol/70 bg-powder/95 p-6 shadow-sm md:col-start-1 sm:p-8"
+    >
+      <p className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-patrol-deep">
+        Closed · {closedTrail.trailName}
+      </p>
+      <h2
+        id={`${closedTrail.id}-title`}
+        className="mt-3 font-display text-4xl font-bold uppercase tracking-wide"
+      >
+        Closed trail
+      </h2>
+      <p className="mt-1 text-sm text-ink/70">{closedTrail.period}</p>
+      <p className="mt-5 max-w-prose leading-relaxed">{closedTrail.story}</p>
+    </section>
+  );
+}
+
 /**
  * The run (§2): waypoint sections positioned at t × runHeight, exactly where
  * the SVG marker sits — pure data, no client facts. DOM order = t order.
@@ -83,6 +108,14 @@ export function CareerDocument() {
           </div>
         </div>
       ))}
+      <div
+        className="waypoint-slot absolute inset-x-0"
+        style={{ top: `calc(${closedTrail.t} * ${runHeightSvh}svh)` }}
+      >
+        <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 sm:px-8 md:grid-cols-2 md:px-14">
+          <ClosedTrailSection />
+        </div>
+      </div>
     </>
   );
 }

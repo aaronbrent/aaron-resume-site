@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { deriveRunHeightSvh, waypointOffsetSvh } from "./run-height";
 
-const meta = { introSvh: 100, dwellSvh: 160, outroSvh: 140 };
+const meta = { introSvh: 100, dwellSvh: 160, outroSvh: 220 };
 
 describe("deriveRunHeightSvh", () => {
-  it("derives the PLAN §2 worked example: 100 + 4×160 + 140 = 880svh", () => {
-    expect(deriveRunHeightSvh(meta, 4)).toBe(880);
+  it("derives the PLAN §2 worked example: 100 + 4×160 + 220 = 960svh", () => {
+    expect(deriveRunHeightSvh(meta, 4)).toBe(960);
   });
 
   it("adding a 5th waypoint adds exactly one DWELL", () => {
@@ -20,7 +20,7 @@ describe("deriveRunHeightSvh", () => {
 
 describe("waypointOffsetSvh", () => {
   it("scales t linearly against the derived run height", () => {
-    expect(waypointOffsetSvh(meta, 4, 0.5)).toBe(440);
+    expect(waypointOffsetSvh(meta, 4, 0.5)).toBe(480);
   });
 
   it("rejects t outside (0, 1)", () => {

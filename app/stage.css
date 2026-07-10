@@ -252,6 +252,23 @@ html.js .reveal.revealed {
   opacity: 1;
   translate: none;
 }
+
+/* Phase 5 closed-trail card: the map carries the physical patrol rope; this
+   restrained printed label keeps the corresponding document postscript clear. */
+.closed-trail-card {
+  position: relative;
+  overflow: hidden;
+}
+.closed-trail-card::before {
+  position: absolute;
+  top: 0.65rem;
+  right: -2rem;
+  width: 8rem;
+  border-top: 3px solid var(--color-patrol);
+  content: "";
+  opacity: 0.75;
+  transform: rotate(-20deg);
+}
 @media (prefers-reduced-motion: no-preference) {
   html.js .reveal {
     translate: 0 18px;

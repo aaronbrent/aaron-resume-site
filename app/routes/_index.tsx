@@ -11,6 +11,7 @@ import { useRig } from "~/lib/rig/use-rig";
 import { Hud, writeHud } from "~/components/Hud";
 
 export function meta() {
+  const ogImage = `${site.url}/og-trail-map.png`;
   return [
     { title: site.title },
     { name: "description", content: site.description },
@@ -18,7 +19,14 @@ export function meta() {
     { property: "og:description", content: site.description },
     { property: "og:type", content: "profile" },
     { property: "og:url", content: site.url },
-    { name: "twitter:card", content: "summary" },
+    { property: "og:image", content: ogImage },
+    { property: "og:image:type", content: "image/png" },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: "Aaron Ellis trail map portfolio" },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:image", content: ogImage },
+    { name: "twitter:image:alt", content: "Aaron Ellis trail map portfolio" },
   ];
 }
 
