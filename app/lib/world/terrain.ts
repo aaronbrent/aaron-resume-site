@@ -27,6 +27,11 @@ export interface TerrainData {
 export interface TerrainBuilder extends TerrainData {
   /** Fills vertex rows [rStart, rEnd) — call over the full range once. */
   fillRows(rStart: number, rEnd: number): void;
+  /** Bilinear ground height at world (x, z); valid after rows are filled. */
+  heightAt(x: number, z: number): number;
+  minX: number;
+  minZ: number;
+  cellM: number;
 }
 
 export interface TerrainOptions {
@@ -119,11 +124,14 @@ export function createTerrainBuilder(
         }
         const dist = Math.sqrt(bestD2);
         const lineY = lut.pos[bestI * 3 + 1]!;
+        // Dwell benches groom a wider apron: where the profile slows for a
+        // sign, the flat corridor widens so the sign stands on groomed snow.
+        const apron = corridor + 8 * (1 - smoothstep(0.25, 0.8, lut.speed[bestI]!));
         // Valley walls: gentle rise away from the run, capped so far ridges
         // stay believable; relief fades out inside the corridor.
         const wall = Math.min(90, (dist / 45) ** 1.7 * 20);
         const relief = fbm(noise, x * 0.011, z * 0.011, 3) * 14;
-        const outside = smoothstep(corridor, corridor + shoulder, dist);
+        const outside = smoothstep(apron, apron + shoulder, dist);
         const idx = (r * (cols + 1) + c) * 3;
         positions[idx] = x;
         positions[idx + 1] = lineY - 0.4 + outside * (wall + relief + 0.4);
@@ -132,7 +140,20 @@ export function createTerrainBuilder(
     }
   }
 
-  return { positions, indices, cols, rows, fillRows };
+  function heightAt(x: number, z: number): number {
+    const fc = Math.min(cols - 1, Math.max(0, (x - minX) / cell));
+    const fr = Math.min(rows - 1, Math.max(0, (z - minZ) / cell));
+    const c0 = Math.floor(fc);
+    const r0 = Math.floor(fr);
+    const tx = fc - c0;
+    const tz = fr - r0;
+    const y = (r: number, c: number) => positions[(r * (cols + 1) + c) * 3 + 1]!;
+    const top = y(r0, c0) + tx * (y(r0, c0 + 1) - y(r0, c0));
+    const bottom = y(r0 + 1, c0) + tx * (y(r0 + 1, c0 + 1) - y(r0 + 1, c0));
+    return top + tz * (bottom - top);
+  }
+
+  return { positions, indices, cols, rows, fillRows, heightAt, minX, minZ, cellM: cell };
 }
 
 /** One-shot build — tests and any future build-time serialization. */
@@ -140,7 +161,7 @@ export function buildTerrain(
   lut: LineLut,
   seed: number,
   opts: TerrainOptions = {},
-): TerrainData {
+): TerrainBuilder {
   const builder = createTerrainBuilder(lut, seed, opts);
   builder.fillRows(0, builder.rows + 1);
   return builder;

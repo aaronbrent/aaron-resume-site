@@ -14,12 +14,10 @@ let webgl2: boolean | undefined;
 
 function supportsWebGL2(): boolean {
   if (webgl2 !== undefined) return webgl2;
-  try {
-    const canvas = document.createElement("canvas");
-    webgl2 = canvas.getContext("webgl2") !== null;
-  } catch {
-    webgl2 = false;
-  }
+  // API presence only: creating a real context costs hundreds of throttled
+  // milliseconds on software GL, and this runs on the hydration path. An
+  // actual context failure surfaces later as rig3d's onFallback → demotion.
+  webgl2 = typeof WebGL2RenderingContext !== "undefined";
   return webgl2;
 }
 

@@ -2,9 +2,10 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 /**
- * Tier 2 — the drop-in (PLAN-3D Phase A exit criteria). Runs in its own
- * Playwright project with no stored tier preference, so the capability gate
- * resolves to ride (headless Chromium provides WebGL2 via SwiftShader).
+ * Tier 2 — the drop-in (PLAN-3D Phase A/B exit criteria). Runs in its own
+ * Playwright project with no stored tier preference. Headless Chromium's GL
+ * is SwiftShader, which the rig demotes to Tier 1 (ADR-6: no GPU → the
+ * printed map); `?gl=full` overrides so these specs exercise the real ride.
  */
 
 const canvasT = (page: import("@playwright/test").Page) =>
@@ -16,7 +17,7 @@ test.describe("the drop-in (Tier 2)", () => {
   test("the tier gate mounts the 3D viewport and hides the 2D stage", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/?gl=full");
     await expect(page.locator("[data-run-canvas]")).toBeAttached();
     await expect(page.locator("[data-run-canvas]")).toHaveAttribute("data-ready", "true");
     await expect(page.locator("html")).toHaveAttribute("data-tier", "ride");
@@ -24,7 +25,7 @@ test.describe("the drop-in (Tier 2)", () => {
   });
 
   test("scroll drives the camera down the line", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?gl=full");
     await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
     const atSummit = Number(await canvasT(page));
     expect(atSummit).toBeLessThan(0.1);
@@ -41,12 +42,27 @@ test.describe("the drop-in (Tier 2)", () => {
   test("deep link lands the camera inside the waypoint's dwell zone", async ({
     page,
   }) => {
-    await page.goto("/#public");
+    await page.goto("/?gl=full#public");
     await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
     await page.waitForTimeout(900);
     const t = Number(await canvasT(page));
     // Public.com anchors at t=0.45; its read bench spans several hundredths.
     expect(Math.abs(t - 0.45)).toBeLessThan(0.05);
+  });
+
+  test("a software rasterizer demotes to the printed map (ADR-6)", async ({ page }) => {
+    // No ?gl=full: headless GL is SwiftShader, so the rig must hand the run
+    // to Tier 1 — the visitor without a GPU gets the complete v1 map.
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("data-tier", "map");
+    await expect(page.locator("[data-run-canvas]")).toHaveCount(0);
+    await expect(page.locator("[data-stage-2d]")).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 1500));
+    await page.waitForTimeout(900);
+    const transform = await page.evaluate(
+      () => document.querySelector<HTMLElement>("[data-rider]")!.style.transform,
+    );
+    expect(transform).toContain("translate3d");
   });
 
   test("reduced motion never mounts the 3D viewport", async ({ page }) => {
@@ -74,7 +90,7 @@ test.describe("the drop-in (Tier 2)", () => {
   test("the legend toggle switches to the map and back, preserving position", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/?gl=full");
     await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
     const toggle = page.locator("[data-tier-toggle]");
     await toggle.scrollIntoViewIfNeeded();
@@ -100,7 +116,7 @@ test.describe("the drop-in (Tier 2)", () => {
   });
 
   test("the 3D layer stays out of the accessibility tree: axe = 0", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?gl=full");
     await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
     // Resolve the one-shot gondola fade and reveal transitions before the
     // scan — axe measures blended colors on mid-transition elements.

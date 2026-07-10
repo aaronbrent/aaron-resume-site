@@ -3,13 +3,20 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  ConeGeometry,
+  CylinderGeometry,
   Fog,
+  Group,
   InstancedMesh,
+  Line,
+  LineBasicMaterial,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
+  Quaternion,
   Scene,
+  Vector3,
   WebGLRenderer,
 } from "three";
 import { closedTrail } from "~/content/closed-trail";
@@ -22,21 +29,29 @@ import {
   sampleLineLut,
   type LineLutSample,
 } from "~/lib/line/lut3d";
-import { createScrollLoop, scrollToT } from "~/lib/rig/core";
+import { createScrollLoop, scrollToT, type ScrollLoop } from "~/lib/rig/core";
+import { createNoise2D, fbm } from "~/lib/world/noise";
+import { scatterTrees } from "~/lib/world/scatter";
 import { createTerrainBuilder } from "~/lib/world/terrain";
+import { createRidges } from "./ridges";
+import { createContourMaterial } from "./terrain-material";
 
 /**
  * The 3D camera rig (PLAN-3D §4–§5): the same scroll-driven loop as the 2D
  * rider, rendering a first-person camera riding the line. React mounts the
- * canvas once; everything after is imperative. Phase A scope: camera on the
- * line over the gray-box corridor-carved mountain — bank/FOV/spray are
- * Phase D channels.
+ * canvas once; everything after is imperative. Phase B scope: the map stands
+ * up — palette vertex colors, the contour-line shader, trees, ridgelines,
+ * the lift line. Bank/FOV/spray are Phase D channels.
  *
- * Frame-cost discipline: lighting is baked into vertex colors on the CPU
- * (sliceable init work), so the GPU program is MeshBasicMaterial — trivial to
- * compile and rasterize even on software GL, which is what CI's Lighthouse
- * and the weakest real devices run. The terrain ships as z-band chunks so
- * frustum culling keeps the fog-hidden mountain off the rasterizer.
+ * Frame-cost discipline: startRig3d returns immediately and ALL heavy work —
+ * including context creation, which costs hundreds of throttled milliseconds
+ * on software GL — happens in an init sliced across animation frames. The 2D
+ * map carries the run until the first frame renders (§6). Lighting and
+ * palette bake into vertex colors on the CPU, so the GPU programs stay
+ * trivial; the software-GL tier (CI's Lighthouse, weakest devices) renders
+ * flat colors at DPR 1 without MSAA with pulled-in fog and a thinner forest —
+ * the §7 cut ladder; hardware gets the contour shader. `?gl=full` forces the
+ * hardware path for tuning.
  */
 
 const EYE_HEIGHT_M = 1.7;
@@ -50,7 +65,9 @@ const CAMERA_FAR_M = 340;
 const TERRAIN_CELL_M = 4;
 const TERRAIN_CHUNKS = 8;
 const TERRAIN_ROW_SLICE = 96;
-const TRI_SLICE = 32768;
+const TRI_SLICE = 12288;
+const TREE_SLICE = 600;
+const LIFT_TOWERS = 7;
 
 export interface Rig3dTelemetry {
   t: number;
@@ -99,6 +116,11 @@ function isSoftwareGl(): boolean {
   }
 }
 
+const smooth01 = (edge0: number, edge1: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+};
+
 export function startRig3d({
   canvas,
   container,
@@ -107,48 +129,22 @@ export function startRig3d({
   onFallback,
 }: Rig3dOptions): () => void {
   const initStart = performance.now();
-  const softwareGl = isSoftwareGl();
-  let renderer: WebGLRenderer;
-  try {
-    renderer = new WebGLRenderer({
-      canvas,
-      antialias: !softwareGl,
-      powerPreference: "high-performance",
-    });
-  } catch {
-    onFallback("webgl-init");
-    return () => {};
-  }
-  renderer.setPixelRatio(
-    softwareGl ? 1 : Math.min(window.devicePixelRatio || 1, MAX_DPR),
-  );
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  const fullGl = new URLSearchParams(window.location.search).get("gl") === "full";
 
-  const paper = cssColor("--color-paper", "#f4efe3");
-
-  // Software GL also gets the fog pulled in: paper swallows the far chunks
-  // before the CPU has to rasterize them (the §7 cut ladder, applied early).
-  const fogFar = softwareGl ? FOG_FAR_M * 0.55 : FOG_FAR_M;
-  const scene = new Scene();
-  scene.background = paper;
-  scene.fog = new Fog(paper, softwareGl ? FOG_NEAR_M * 0.55 : FOG_NEAR_M, fogFar);
-
-  const terrainMaterial = new MeshBasicMaterial({ vertexColors: true });
-  const postGeometry = new BoxGeometry(0.5, 5, 0.3);
-  const postMaterial = new MeshBasicMaterial({ color: 0x6b747c });
-  const chunkGeometries: BufferGeometry[] = [];
-
-  const camera = new PerspectiveCamera(
-    BASE_FOV_DEG,
-    window.innerWidth / window.innerHeight,
-    0.3,
-    fogFar + (CAMERA_FAR_M - FOG_FAR_M),
-  );
-
-  let containerH = container.offsetHeight;
-  let ready = false;
   let disposed = false;
-  let lut: ReturnType<typeof buildLineLut>;
+  let ready = false;
+  let containerH = container.offsetHeight;
+  let renderer: WebGLRenderer | undefined;
+  let camera!: PerspectiveCamera;
+  let ridges: Group | undefined;
+  let lut!: ReturnType<typeof buildLineLut>;
+  let loop!: ScrollLoop;
+  const scene = new Scene();
+  const disposables: Array<{ dispose(): void }> = [];
+  const track = <T extends { dispose(): void }>(resource: T): T => {
+    disposables.push(resource);
+    return resource;
+  };
   const eye: LineLutSample = emptyLineLutSample();
   const ahead: LineLutSample = emptyLineLutSample();
   const telemetry: Rig3dTelemetry = {
@@ -158,7 +154,7 @@ export function startRig3d({
     dropped: 0,
     parked: true,
     draws: 0,
-    dpr: renderer.getPixelRatio(),
+    dpr: 1,
     fovDeg: BASE_FOV_DEG,
     initMs: 0,
   };
@@ -169,7 +165,8 @@ export function startRig3d({
     sampleLineLut(lut, t + LOOK_AHEAD_T, ahead);
     camera.position.set(eye.pos[0], eye.pos[1] + EYE_HEIGHT_M, eye.pos[2]);
     camera.lookAt(ahead.pos[0], ahead.pos[1] + LOOK_HEIGHT_M, ahead.pos[2]);
-    renderer.render(scene, camera);
+    ridges?.position.copy(camera.position); // infinitely-far scenery
+    renderer!.render(scene, camera);
     canvas.dataset.t = t.toFixed(4);
     if (!ready) {
       ready = true;
@@ -183,18 +180,13 @@ export function startRig3d({
       telemetry.frameMs = frameMs;
       telemetry.dropped = loop.dropped;
       telemetry.parked = loop.parked;
-      telemetry.draws = renderer.info.render.calls;
-      telemetry.dpr = renderer.getPixelRatio();
+      telemetry.draws = renderer!.info.render.calls;
+      telemetry.dpr = renderer!.getPixelRatio();
       telemetry.fovDeg = camera.fov;
       onFrame(telemetry);
     }
     return false;
   }
-
-  const loop = createScrollLoop({
-    getTarget: () => window.scrollY,
-    apply,
-  });
 
   function snap() {
     containerH = container.offsetHeight;
@@ -202,7 +194,7 @@ export function startRig3d({
   }
 
   function onResize() {
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    renderer!.setSize(window.innerWidth, window.innerHeight, false);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     snap();
@@ -216,14 +208,72 @@ export function startRig3d({
   };
   const ro = new ResizeObserver(() => snap());
 
-  // Init is sliced across frames (§6): the budget is load-bearing for the
-  // summit open, and one long post-hydration task is exactly what the
-  // performance gate punishes. The 2D map carries the run until the first
-  // frame renders, so nothing here races the visitor's scroll.
   const yieldFrame = () =>
     new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
   async function init() {
+    // Leave the React layout-effect task before doing anything expensive.
+    await yieldFrame();
+    if (disposed) return;
+    // A software rasterizer means no GPU: the honest tier for that visitor
+    // is the complete printed map, not a degraded 10 fps ride (ADR-6).
+    // `?gl=full` overrides for e2e/tuning, where slow-but-real is the point.
+    if (isSoftwareGl() && !fullGl) {
+      onFallback("software-gl");
+      return;
+    }
+
+    await yieldFrame();
+    if (disposed) return;
+    try {
+      renderer = new WebGLRenderer({
+        canvas,
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+    } catch {
+      onFallback("webgl-init");
+      return;
+    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_DPR));
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    telemetry.dpr = renderer.getPixelRatio();
+
+    const paper = cssColor("--color-paper", "#f4efe3");
+    const ink = cssColor("--color-ink", "#22303a");
+    const powder = cssColor("--color-powder", "#ffffff");
+    const evergreen = cssColor("--color-evergreen", "#2e5e4e");
+
+    scene.background = paper;
+    scene.fog = new Fog(paper, FOG_NEAR_M, FOG_FAR_M);
+    camera = new PerspectiveCamera(
+      BASE_FOV_DEG,
+      window.innerWidth / window.innerHeight,
+      0.3,
+      CAMERA_FAR_M,
+    );
+
+    // Palette and lighting bake into vertex colors (sliced work below); the
+    // contour-line signature shader draws on top.
+    const terrainMaterial = track(
+      createContourMaterial({
+        ink,
+        fogColor: paper,
+        fogNear: FOG_NEAR_M,
+        fogFar: FOG_FAR_M,
+      }),
+    );
+
+    await yieldFrame();
+    if (disposed) return;
+    ridges = createRidges(paper, ink, camera.far, line3d.seed);
+    for (const child of ridges.children) {
+      const mesh = child as Mesh;
+      track(mesh.geometry);
+      track(mesh.material as MeshBasicMaterial);
+    }
+    scene.add(ridges);
+
     await yieldFrame();
     if (disposed) return;
     lut = buildLineLut(line3d.points, contentAnchors());
@@ -237,11 +287,14 @@ export function startRig3d({
       if (disposed) return;
     }
 
-    // Flat-shaded facets with the basic material: expand to non-indexed
-    // triangles, bake one lambert shade per face into vertex colors, and
-    // split into z-band chunks so frustum culling skips what fog hides.
+    // Flat-shaded facets: expand to non-indexed triangles, bake the palette
+    // (powder snowfields, ink-tinted rock on steep faces, an aged-paper wash)
+    // with one lambert shade per face, split into z-band chunks so frustum
+    // culling skips what fog hides.
+    const tintNoise = createNoise2D(line3d.seed ^ 0x7a9e);
+    const rock = new Color().copy(powder).lerp(ink, 0.5);
+    const faceColor = new Color();
     const triCount = builder.indices.length / 3;
-    const base = new Color(0xdcdcd4); // gray-box snow; the palette is Phase B
     const sunLen = Math.hypot(-0.45, 0.8, -0.35);
     const sx = -0.45 / sunLen;
     const sy = 0.8 / sunLen;
@@ -271,46 +324,138 @@ export function startRig3d({
           nx /= nLen;
           ny /= nLen;
           nz /= nLen;
-          const shade = 0.62 + 0.38 * Math.max(0, nx * sx + ny * sy + nz * sz);
+          const cx = (p[ia]! + p[ib]! + p[ic]!) / 3;
+          const cz = (p[ia + 2]! + p[ib + 2]! + p[ic + 2]!) / 3;
+          // Steep faces break through the snow as ink-tinted rock.
+          const rockMix = 1 - smooth01(0.7, 0.84, ny);
+          const wash = (fbm(tintNoise, cx * 0.02, cz * 0.02, 2) * 0.5 + 0.5) * 0.12;
+          const shade = 0.86 + 0.14 * Math.max(0, nx * sx + ny * sy + nz * sz);
+          faceColor
+            .copy(powder)
+            .lerp(rock, rockMix)
+            .lerp(paper, wash)
+            .multiplyScalar(shade);
           const o = (tri - chunkStart) * 9;
           for (let v = 0; v < 3; v++) {
             const src = v === 0 ? ia : v === 1 ? ib : ic;
             flatPos[o + v * 3] = p[src]!;
             flatPos[o + v * 3 + 1] = p[src + 1]!;
             flatPos[o + v * 3 + 2] = p[src + 2]!;
-            flatCol[o + v * 3] = base.r * shade;
-            flatCol[o + v * 3 + 1] = base.g * shade;
-            flatCol[o + v * 3 + 2] = base.b * shade;
+            flatCol[o + v * 3] = faceColor.r;
+            flatCol[o + v * 3 + 1] = faceColor.g;
+            flatCol[o + v * 3 + 2] = faceColor.b;
           }
         }
         await yieldFrame();
         if (disposed) return;
       }
-      const geometry = new BufferGeometry();
+      const geometry = track(new BufferGeometry());
       geometry.setAttribute("position", new BufferAttribute(flatPos, 3));
       geometry.setAttribute("color", new BufferAttribute(flatCol, 3));
       geometry.computeBoundingSphere();
-      chunkGeometries.push(geometry);
       scene.add(new Mesh(geometry, terrainMaterial));
+      await yieldFrame();
+      if (disposed) return;
     }
 
-    // Gray-box waypoint posts beside the line: enough presence to verify deep
-    // links land the camera at the right stretch. Real signage is Phase C.
+    // Treeline: two instanced draws, deterministic from the content seed.
+    const trees = scatterTrees(lut, line3d.seed);
+    await yieldFrame();
+    if (disposed) return;
+    const canopyGeometry = track(new ConeGeometry(0.42, 0.85, 6));
+    canopyGeometry.translate(0, 0.62, 0);
+    const trunkGeometry = track(new CylinderGeometry(0.045, 0.07, 0.32, 5));
+    trunkGeometry.translate(0, 0.16, 0);
+    const canopyMaterial = track(new MeshBasicMaterial({ color: 0xffffff }));
+    const trunkMaterial = track(
+      new MeshBasicMaterial({ color: new Color().copy(ink).lerp(paper, 0.3) }),
+    );
+    const canopies = new InstancedMesh(canopyGeometry, canopyMaterial, trees.length);
+    const trunks = new InstancedMesh(trunkGeometry, trunkMaterial, trees.length);
+    {
+      const m = new Matrix4();
+      const q = new Quaternion();
+      const pos = new Vector3();
+      const scale = new Vector3();
+      const up = new Vector3(0, 1, 0);
+      const tint = new Color();
+      for (let start = 0; start < trees.length; start += TREE_SLICE) {
+        const end = Math.min(start + TREE_SLICE, trees.length);
+        for (let i = start; i < end; i++) {
+          const tree = trees[i]!;
+          const ground = builder.heightAt(tree.x, tree.z);
+          q.setFromAxisAngle(up, tree.tint * Math.PI);
+          pos.set(tree.x, ground - 0.15, tree.z);
+          scale.setScalar(tree.heightM);
+          m.compose(pos, q, scale);
+          canopies.setMatrixAt(i, m);
+          trunks.setMatrixAt(i, m);
+          tint.copy(evergreen).offsetHSL(0, 0, tree.tint * 0.045);
+          canopies.setColorAt(i, tint);
+        }
+        await yieldFrame();
+        if (disposed) return;
+      }
+      canopies.instanceMatrix.needsUpdate = true;
+      trunks.instanceMatrix.needsUpdate = true;
+      if (canopies.instanceColor) canopies.instanceColor.needsUpdate = true;
+    }
+    scene.add(canopies, trunks);
+
+    // The lift line climbs past drop 1 to the summit station — the gondola
+    // credits' eventual 3D home (Phase E stretch); towers + cable for now.
+    const towerPostGeometry = track(new BoxGeometry(0.7, 11, 0.7));
+    const towerArmGeometry = track(new BoxGeometry(5.5, 0.5, 0.5));
+    const steel = track(
+      new MeshBasicMaterial({ color: new Color().copy(ink).lerp(paper, 0.2) }),
+    );
+    const towerPosts = new InstancedMesh(towerPostGeometry, steel, LIFT_TOWERS);
+    const towerArms = new InstancedMesh(towerArmGeometry, steel, LIFT_TOWERS);
+    const cablePoints = new Float32Array(LIFT_TOWERS * 3);
+    {
+      const m = new Matrix4();
+      for (let i = 0; i < LIFT_TOWERS; i++) {
+        const f = i / (LIFT_TOWERS - 1);
+        const x = -26 + 6 * f;
+        const z = -30 + 265 * f;
+        const ground = builder.heightAt(x, z);
+        m.makeTranslation(x, ground + 5.2, z);
+        towerPosts.setMatrixAt(i, m);
+        m.makeTranslation(x, ground + 10.4, z);
+        towerArms.setMatrixAt(i, m);
+        cablePoints[i * 3] = x;
+        cablePoints[i * 3 + 1] = ground + 10.7;
+        cablePoints[i * 3 + 2] = z;
+      }
+      towerPosts.instanceMatrix.needsUpdate = true;
+      towerArms.instanceMatrix.needsUpdate = true;
+    }
+    const cableGeometry = track(new BufferGeometry());
+    cableGeometry.setAttribute("position", new BufferAttribute(cablePoints, 3));
+    const cable = new Line(cableGeometry, track(new LineBasicMaterial({ color: ink })));
+    scene.add(towerPosts, towerArms, cable);
+
+    // Gray-box waypoint posts beside the line, on the groomed apron — the
+    // deep-link landing markers. Real signage is Phase C.
+    const postGeometry = track(new BoxGeometry(0.5, 5, 0.3));
+    const postMaterial = track(new MeshBasicMaterial({ color: 0x6b747c }));
     const anchored = [...waypoints.map((w) => w.id), closedTrail.id];
     const posts = new InstancedMesh(postGeometry, postMaterial, anchored.length);
-    const m = new Matrix4();
-    const sample = emptyLineLutSample();
-    const anchorT = new Map(contentAnchors().map((a) => [a.id, a.t]));
-    anchored.forEach((id, i) => {
-      const s = sampleLineLut(lut, anchorT.get(id)!, sample);
-      // Stand the post on the corridor's edge, to the rider's right.
-      const side = 6;
-      const rx = s.tan[2];
-      const rz = -s.tan[0];
-      m.makeTranslation(s.pos[0] + rx * side, s.pos[1] + 2.5, s.pos[2] + rz * side);
-      posts.setMatrixAt(i, m);
-    });
-    posts.instanceMatrix.needsUpdate = true;
+    {
+      const m = new Matrix4();
+      const sample = emptyLineLutSample();
+      const anchorT = new Map(contentAnchors().map((a) => [a.id, a.t]));
+      anchored.forEach((id, i) => {
+        const s = sampleLineLut(lut, anchorT.get(id)!, sample);
+        // Stand the post on the corridor's edge, to the rider's right.
+        const side = 6;
+        const rx = s.tan[2];
+        const rz = -s.tan[0];
+        m.makeTranslation(s.pos[0] + rx * side, s.pos[1] + 2.5, s.pos[2] + rz * side);
+        posts.setMatrixAt(i, m);
+      });
+      posts.instanceMatrix.needsUpdate = true;
+    }
     scene.add(posts);
 
     // Shader compilation off the render path where the driver allows it,
@@ -320,6 +465,26 @@ export function startRig3d({
     await yieldFrame();
     if (disposed) return;
 
+    // Warm-up: an 8×8 render from the real starting view pays the buffer
+    // uploads in its own task, so the first visible frame is raster only.
+    {
+      const t0 = scrollToT(window.scrollY, containerH);
+      sampleLineLut(lut, t0, eye);
+      sampleLineLut(lut, t0 + LOOK_AHEAD_T, ahead);
+      camera.position.set(eye.pos[0], eye.pos[1] + EYE_HEIGHT_M, eye.pos[2]);
+      camera.lookAt(ahead.pos[0], ahead.pos[1] + LOOK_HEIGHT_M, ahead.pos[2]);
+      ridges?.position.copy(camera.position);
+      renderer.setSize(8, 8, false);
+      renderer.render(scene, camera);
+      renderer.setSize(window.innerWidth, window.innerHeight, false);
+    }
+    await yieldFrame();
+    if (disposed) return;
+
+    loop = createScrollLoop({
+      getTarget: () => window.scrollY,
+      apply,
+    });
     ro.observe(container);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
@@ -338,7 +503,7 @@ export function startRig3d({
 
   return () => {
     disposed = true;
-    loop.stop();
+    loop?.stop();
     ro.disconnect();
     window.removeEventListener("scroll", onScroll);
     window.removeEventListener("resize", onResize);
@@ -347,10 +512,7 @@ export function startRig3d({
     delete canvas.dataset.ready;
     delete canvas.dataset.t;
     delete document.documentElement.dataset.rideReady;
-    for (const geometry of chunkGeometries) geometry.dispose();
-    terrainMaterial.dispose();
-    postGeometry.dispose();
-    postMaterial.dispose();
-    renderer.dispose();
+    for (const resource of disposables) resource.dispose();
+    renderer?.dispose();
   };
 }

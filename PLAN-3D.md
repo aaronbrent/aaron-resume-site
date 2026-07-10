@@ -50,7 +50,7 @@
 - **Tier 1 — the printed map.** The _entire v1 experience_ (2D trail map, SVG rider, canvas spray, gondola intro) becomes the fallback presentation: `prefers-reduced-motion`, no WebGL2, weak-device heuristic, WebGL context loss mid-session, 3D chunk load failure, or the user flipping the map toggle. v1 code is not deleted, forked, or allowed to rot — it is the guaranteed floor, and its existing e2e suite keeps guarding it.
 - **Tier 2 — the drop-in.** The 3D POV run, lazy-loaded, capability-gated.
 
-**Tier selection is a runtime decision the rig owns** (one function, HUD-visible): reduced-motion → 1; no WebGL2 context → 1; `deviceMemory ≤ 2` → 1; else → 2 — cheap synchronous checks only, because the summit open (§6) can't wait on a timed probe; the first seconds of real frame timings serve as the probe, with a live downgrade path (context loss or sustained missed frames swaps to Tier 1 at the same t — the map shows the rider exactly where the camera was). The toggle in the legend makes the demotion path a _feature_: "prefer the printed map" is a legitimate aesthetic choice, and its presence signals confidence, not compromise.
+**Tier selection is a runtime decision the rig owns** (one function, HUD-visible): reduced-motion → 1; no WebGL2 API → 1; `deviceMemory ≤ 2` → 1; else → 2 — cheap synchronous checks only, because the summit open (§6) can't wait on a timed probe; the rig's own init acts as the real probe, with a live downgrade path (context loss, init failure, a **software rasterizer** — no GPU means the printed map, not a 10 fps ride — or sustained missed frames swaps to Tier 1 at the same t — the map shows the rider exactly where the camera was). The toggle in the legend makes the demotion path a _feature_: "prefer the printed map" is a legitimate aesthetic choice, and its presence signals confidence, not compromise.
 
 **Rejected:** replacing v1 outright (throws away a tested accessibility story and a finished reduced-motion deliverable to save ~30 kB of retained code); shipping 3D as the only motion tier with the document as the sole fallback (reduced-motion visitors would lose the map art direction v1 built specifically for them).
 
@@ -254,11 +254,12 @@ Each phase ends demoable and deployed to a preview. **Tier 1 e2e stays green in 
 
 ### Phase B — The map stands up (days 5–8) ✅ = it looks like the site, not a tech demo
 
-- [ ] Contour-line terrain shader, palette vertex colors, `paper` fog tuned
-- [ ] Instanced trees, far-ridge silhouettes, lift towers on the intro traverse
-- [ ] Terrain benches at dwell zones stamped by the generator; init-time budget measured (< 20 ms or move to build-time — decision gate, now load-bearing for the summit open §6)
-- [ ] Paper frame + legend + cartouche framing the run viewport
-- **Exit:** a screenshot at any t is recognizably the v1 map's world; draw calls ≤ 40; frame gate holds with the full world.
+- [x] Contour-line terrain shader (fwidth-AA minor/index lines in ink, moiré-faded), palette vertex colors baked per face (powder snowfields, ink-tinted rock above ~35°, aged-paper wash), `paper` fog
+- [x] Instanced trees (seeded scatter, forest patches, corridor standoff), two far-ridge silhouette rings following the camera, lift towers + cable climbing past drop 1
+- [x] Terrain benches stamped by the generator — dwell zones groom a wider apron (corridor 7 m → 15 m), unit-tested
+- [x] Init budget: the < 20 ms single-task gate is superseded by frame-sliced init (nothing blocks; ~300 ms wall to first frame); **software rasterizers demote to Tier 1 instead of riding** (ADR-6) — no GPU gets the printed map, and CI's Lighthouse measures exactly that path: `/` 0.96, TBT ≤ 60 ms
+- [x] Paper frame + legend + cartouche frame the run viewport (v1 DOM furniture, verified over the 3D)
+- **Exit:** _emulated pass:_ screenshots at summit/drops/benches read as the v1 map's world (contours on the steeps, treeline, ridgelines); draw calls 9–13 of the ≤ 40 budget; 70/70 e2e green incl. the software-demotion spec — **real-GPU frame gate still needs your devices** (the full-quality path only runs on hardware now).
 
 ### Phase C — The signs (days 9–13) ✅ = the content rides the mountain
 
