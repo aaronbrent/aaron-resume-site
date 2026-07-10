@@ -5,12 +5,13 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
 const DROPIN_BUDGET_KB = 180;
 const CRITICAL_BUDGET_KB = 130;
 
-const dir = new URL("../build/client/assets", import.meta.url).pathname;
+const dir = fileURLToPath(new URL("../build/client/assets", import.meta.url));
 let dropinKb = 0;
 let criticalKb = 0;
 const rows: string[] = [];

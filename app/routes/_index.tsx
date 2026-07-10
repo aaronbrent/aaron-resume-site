@@ -65,7 +65,15 @@ export default function Index() {
         return;
       }
       const capable = await probeRideCapability();
-      if (!cancelled && request === tierRequest.current) setTier(capable ? 2 : 1);
+      if (cancelled || request !== tierRequest.current) return;
+      if (!capable) {
+        // Keep the shared resolver in sync with the UI so controls such as
+        // TierToggle accurately report the fallback state.
+        demoteTier();
+        setTier(1);
+        return;
+      }
+      setTier(2);
     };
     void update();
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");

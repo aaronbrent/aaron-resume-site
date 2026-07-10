@@ -60,6 +60,10 @@ test.describe("the drop-in (Tier 2)", () => {
     await expect(page.locator("[data-run-canvas]")).toHaveCount(0);
     await expect(page.locator("[data-stage-2d]")).toBeVisible();
     await page.waitForTimeout(300); // allow the deferred capability probe to settle
+    await expect(page.locator("[data-tier-toggle]")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
     const loadedRenderer = await page.evaluate(() =>
       performance
         .getEntriesByType("resource")
