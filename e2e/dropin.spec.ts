@@ -50,13 +50,22 @@ test.describe("the drop-in (Tier 2)", () => {
     expect(Math.abs(t - 0.45)).toBeLessThan(0.05);
   });
 
-  test("a software rasterizer demotes to the printed map (ADR-6)", async ({ page }) => {
-    // No ?gl=full: headless GL is SwiftShader, so the rig must hand the run
-    // to Tier 1 — the visitor without a GPU gets the complete v1 map.
+  test("a software rasterizer stays on the map without loading the renderer", async ({
+    page,
+  }) => {
+    // No ?gl=full: headless GL is SwiftShader, so the capability gate keeps
+    // the visitor on the complete v1 map without importing the renderer.
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-tier", "map");
     await expect(page.locator("[data-run-canvas]")).toHaveCount(0);
     await expect(page.locator("[data-stage-2d]")).toBeVisible();
+    await page.waitForTimeout(300); // allow the deferred capability probe to settle
+    const loadedRenderer = await page.evaluate(() =>
+      performance
+        .getEntriesByType("resource")
+        .some((entry) => entry.name.includes("DropIn-")),
+    );
+    expect(loadedRenderer).toBe(false);
     await page.evaluate(() => window.scrollTo(0, 1500));
     await page.waitForTimeout(900);
     const transform = await page.evaluate(
@@ -113,6 +122,32 @@ test.describe("the drop-in (Tier 2)", () => {
     });
     const backT = Number(await canvasT(page));
     expect(Math.abs(backT - expectedT)).toBeLessThan(0.01);
+  });
+
+  test("the legend toggle clears a map URL override before starting the ride", async ({
+    page,
+  }) => {
+    await page.goto("/?tier=map&gl=full");
+    await expect(page.locator("html")).toHaveAttribute("data-tier", "map");
+    const toggle = page.locator("[data-tier-toggle]");
+    await toggle.scrollIntoViewIfNeeded();
+    await toggle.click();
+    await expect(page.locator("html")).toHaveAttribute("data-tier", "ride");
+    await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
+    expect(new URL(page.url()).searchParams.has("tier")).toBe(false);
+  });
+
+  test("the legend toggle clears a ride URL override before returning to the map", async ({
+    page,
+  }) => {
+    await page.goto("/?tier=ride&gl=full");
+    await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
+    const toggle = page.locator("[data-tier-toggle]");
+    await toggle.scrollIntoViewIfNeeded();
+    await toggle.click();
+    await expect(page.locator("html")).toHaveAttribute("data-tier", "map");
+    await expect(page.locator("[data-run-canvas]")).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.has("tier")).toBe(false);
   });
 
   test("the 3D layer stays out of the accessibility tree: axe = 0", async ({ page }) => {

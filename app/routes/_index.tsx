@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { BaseCamp } from "~/components/BaseCamp";
 import { CareerDocument } from "~/components/CareerDocument";
 import { Hud, writeHud, writeHud3d } from "~/components/Hud";
@@ -10,7 +10,7 @@ import { waypoints } from "~/content/waypoints";
 import { deriveRunHeightSvh } from "~/lib/run-height";
 import { useReveal } from "~/lib/use-reveal";
 import { useRig } from "~/lib/rig/use-rig";
-import { demoteTier, resolveTier, type Tier } from "~/lib/tier";
+import { demoteTier, probeRideCapability, resolveTier, type Tier } from "~/lib/tier";
 
 // Tier 2's chunk (three.js and all) loads only when the tier gate says ride.
 const DropIn = lazy(() => import("~/components/DropIn"));
@@ -50,20 +50,32 @@ const runHeightSvh = deriveRunHeightSvh(runMeta, waypoints.length);
 
 export default function Index() {
   useReveal();
-  // SSR and first paint are always Tier 1 (the map is the loading state, §6);
-  // the gate resolves pre-paint on the client and reacts to toggle/reduced-
-  // motion/demotion changes live.
+  // SSR and first paint are always Tier 1 (the map is the loading state, §6).
+  // The real GL probe happens after that first paint, before the dynamic
+  // renderer import, so a fallback visitor never downloads Three.js.
   const [tier, setTier] = useState<Tier>(1);
   const [rideReady, setRideReady] = useState(false);
-  useLayoutEffect(() => {
-    const update = () => setTier(resolveTier());
-    update();
+  const tierRequest = useRef(0);
+  useEffect(() => {
+    let cancelled = false;
+    const update = async () => {
+      const request = ++tierRequest.current;
+      if (resolveTier() !== 2) {
+        setTier(1);
+        return;
+      }
+      const capable = await probeRideCapability();
+      if (!cancelled && request === tierRequest.current) setTier(capable ? 2 : 1);
+    };
+    void update();
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    reduced.addEventListener("change", update);
-    window.addEventListener("tierchange", update);
+    const onReduced = () => void update();
+    reduced.addEventListener("change", onReduced);
+    window.addEventListener("tierchange", onReduced);
     return () => {
-      reduced.removeEventListener("change", update);
-      window.removeEventListener("tierchange", update);
+      cancelled = true;
+      reduced.removeEventListener("change", onReduced);
+      window.removeEventListener("tierchange", onReduced);
     };
   }, []);
   useEffect(() => {

@@ -48,10 +48,9 @@ import { createContourMaterial } from "./terrain-material";
  * on software GL — happens in an init sliced across animation frames. The 2D
  * map carries the run until the first frame renders (§6). Lighting and
  * palette bake into vertex colors on the CPU, so the GPU programs stay
- * trivial; the software-GL tier (CI's Lighthouse, weakest devices) renders
- * flat colors at DPR 1 without MSAA with pulled-in fog and a thinner forest —
- * the §7 cut ladder; hardware gets the contour shader. `?gl=full` forces the
- * hardware path for tuning.
+ * trivial. Software GL is screened before this lazy chunk imports; hardware
+ * gets the contour shader. `?gl=full` forces the probe through for e2e and
+ * tuning.
  */
 
 const EYE_HEIGHT_M = 1.7;
@@ -96,26 +95,6 @@ function cssColor(name: string, fallback: string): Color {
   return new Color(value.trim() || fallback);
 }
 
-/**
- * Software rasterizers pay per pixel on the CPU: render at 1×, no MSAA.
- * Probed on a throwaway context so the choice lands before renderer creation
- * (antialiasing is a context-creation parameter).
- */
-function isSoftwareGl(): boolean {
-  try {
-    const gl = document.createElement("canvas").getContext("webgl2");
-    if (!gl) return false;
-    const info = gl.getExtension("WEBGL_debug_renderer_info");
-    const name = info
-      ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL))
-      : String(gl.getParameter(gl.RENDERER));
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
-    return /swiftshader|llvmpipe|softpipe|software/i.test(name);
-  } catch {
-    return false;
-  }
-}
-
 const smooth01 = (edge0: number, edge1: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -129,8 +108,6 @@ export function startRig3d({
   onFallback,
 }: Rig3dOptions): () => void {
   const initStart = performance.now();
-  const fullGl = new URLSearchParams(window.location.search).get("gl") === "full";
-
   let disposed = false;
   let ready = false;
   let containerH = container.offsetHeight;
@@ -215,14 +192,6 @@ export function startRig3d({
     // Leave the React layout-effect task before doing anything expensive.
     await yieldFrame();
     if (disposed) return;
-    // A software rasterizer means no GPU: the honest tier for that visitor
-    // is the complete printed map, not a degraded 10 fps ride (ADR-6).
-    // `?gl=full` overrides for e2e/tuning, where slow-but-real is the point.
-    if (isSoftwareGl() && !fullGl) {
-      onFallback("software-gl");
-      return;
-    }
-
     await yieldFrame();
     if (disposed) return;
     try {
