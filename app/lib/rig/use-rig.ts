@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef } from "react";
 import { trails } from "~/content/trails";
 import { samplePath } from "~/lib/trail/validate";
-import { buildLut, sampleLut, smooth, type Lut } from "./lut";
+import { createScrollLoop } from "./core";
+import { buildLut, sampleLut, type Lut } from "./lut";
 import {
   deriveMotionChannels,
   deriveRiderPose,
@@ -13,10 +14,9 @@ import {
 import { createSpray, type Spray, type SprayFrame } from "./spray";
 
 /**
- * The scroll rig (PLAN ADR-2): one passive scroll listener writes the target;
- * one rAF loop runs a time-based smoother, samples the LUT, and writes a
- * transform to the rider ref. The loop parks when settled and wakes on the
- * next scroll. React never re-renders from this — pure imperative writes.
+ * The 2D rider rig (PLAN ADR-2): one passive scroll listener wakes the shared
+ * rig-core loop; each frame samples the LUT and writes a transform to the
+ * rider ref. React never re-renders from this — pure imperative writes.
  *
  * Init order (§3): breakpoint → current scroll → synchronous snap placement
  * (before first paint, closes the deep-link flash window) → LUT → listeners.
@@ -55,16 +55,9 @@ export function startRig(
   let lut: Lut = buildVariantLut(desktopQuery.matches);
   let containerW = container.offsetWidth;
   let containerH = container.offsetHeight;
-  let current = window.scrollY;
-  let target = current;
-  let rafId = 0;
-  let parked = true;
-  let lastTs = 0;
-  let lastCurrent = current;
   let lastVelocity = 0;
   let lastCurvature = 0;
   let reverseMs = 0;
-  let dropped = 0;
   let active = false;
   let spray: Spray | undefined;
   // Reused records keep Phase 4's new channels allocation-free in the rAF.
@@ -163,8 +156,8 @@ export function startRig(
       telemetry.crouch = channels.crouch;
       telemetry.sprayActive = Boolean(spray);
       telemetry.frameMs = frameMs;
-      telemetry.dropped = dropped;
-      telemetry.parked = parked;
+      telemetry.dropped = loop.dropped;
+      telemetry.parked = loop.parked;
       onFrame(telemetry);
     }
     lastCurvature = curvature;
@@ -172,41 +165,12 @@ export function startRig(
     return spraySettling ?? false;
   }
 
-  function frame(ts: number) {
-    const dt = lastTs ? ts - lastTs : 16.7;
-    lastTs = ts;
-    if (dt > 34) dropped++;
-    current = smooth(current, target, dt, TAU_MS);
-    const velocity = (current - lastCurrent) / Math.max(dt, 1);
-    lastCurrent = current;
-    if (Math.abs(current - target) < SETTLE_PX) {
-      current = target;
-      // Spray remains inside this same rAF until its particles settle; only
-      // then does the rig truly park with no animation-frame churn.
-      parked = false;
-      if (apply(current, 0, dt)) {
-        rafId = requestAnimationFrame(frame);
-        return;
-      }
-      // Particles have settled: park, and apply once more so the final frame
-      // the HUD receives reports the parked state instead of the last one it
-      // saw while running.
-      parked = true;
-      apply(current, 0, dt);
-      return;
-    }
-    apply(current, velocity, dt);
-    rafId = requestAnimationFrame(frame);
-  }
-
-  function wake() {
-    target = window.scrollY;
-    if (parked && active) {
-      parked = false;
-      lastTs = 0;
-      rafId = requestAnimationFrame(frame);
-    }
-  }
+  const loop = createScrollLoop({
+    tauMs: TAU_MS,
+    settlePx: SETTLE_PX,
+    getTarget: () => window.scrollY,
+    apply,
+  });
 
   function measure() {
     containerW = container.offsetWidth;
@@ -216,11 +180,10 @@ export function startRig(
   function snap() {
     if (!active) return; // reduced motion: the rig never writes transforms
     measure();
-    current = target = window.scrollY;
     lastVelocity = 0;
     lastCurvature = 0;
     reverseMs = 0;
-    apply(current, 0, 0);
+    loop.snap();
   }
 
   function onBreakpoint() {
@@ -236,11 +199,11 @@ export function startRig(
       rider.style.left = "0";
       rider.style.top = "0";
       attachSpray(document.querySelector<HTMLCanvasElement>("[data-spray]"));
+      loop.start();
       snap();
-      wake();
+      loop.wake();
     } else {
-      cancelAnimationFrame(rafId);
-      parked = true;
+      loop.stop();
       attachSpray();
       rider.style.transform = "";
       rider.style.left = "";
@@ -258,7 +221,7 @@ export function startRig(
     snap();
   });
   ro.observe(container);
-  const onScroll = () => wake();
+  const onScroll = () => loop.wake();
   const onPageShow = () => snap(); // bfcache restore re-sync
   const onReduced = () => setActive(!reducedQuery.matches);
   const onSprayMount = (event: Event) => {
