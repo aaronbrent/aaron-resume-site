@@ -1,5 +1,7 @@
 # PLAN.md — Scroll-Driven Snowboarder Portfolio
 
+> **v2 direction:** the major 3D POV redesign is planned in [PLAN-3D.md](./PLAN-3D.md). This document remains the record of the shipped v1, which PLAN-3D keeps alive as the fallback tier.
+
 **Project:** aaronellis trail map — a personal site where the career is a snowboard run down a mountain.
 **Audience:** Hiring managers/recruiters for SE, sales engineering, DevRel, and TAM roles. Mostly non-engineers, arriving from LinkedIn on phones.
 **Appetite:** 2–3 weeks, phased. Phase 1 ships a complete, hireable site by itself; everything after is compounding.
