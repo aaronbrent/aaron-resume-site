@@ -421,7 +421,7 @@ Each phase ends demoable and deployed. **Do not start phase N+1 with phase N's e
 4. **The committed PDF.** The NerdWallet version is tailored to one employer; the site should serve a generalized master. Confirm you'll produce one (same bones, employer-neutral summary), or I'll spec the delta.
 5. **Gondola credits copy.** Which personal projects ride up alongside freeCodeCamp / V School / My Menu Plans? 3–5 lines max; the gondola is short.
 6. **Trail names.** "The Rewrite," "Corduroy," "The Traverse," "Prime Face" are proposals with reasoning (§4). Veto or rename freely — they're your runs.
-7. **Post-launch candidates (explicitly out of scope now):** night-skiing dark mode; Playwright print-to-PDF pipeline; `scroll-timeline` parallax enhancement for far-terrain layers.
+7. **Post-launch candidates (explicitly out of scope now):** night-skiing dark mode; Playwright print-to-PDF pipeline; `scroll-timeline` parallax enhancement for far-terrain layers; ride audio for the v2 POV run (wind + carve loop, muted by default — specced in [PLAN-3D.md](./PLAN-3D.md) §12).
 
 ---
 
