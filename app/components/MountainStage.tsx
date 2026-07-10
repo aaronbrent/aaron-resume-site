@@ -296,6 +296,7 @@ export function MountainStage() {
       role="presentation"
       className="absolute inset-0"
       data-print-hidden="true"
+      data-stage-2d
     >
       <TrailSvg variant={trails.mobile} id="mobile" />
       <TrailSvg variant={trails.desktop} id="desktop" />

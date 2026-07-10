@@ -8,6 +8,19 @@ import { smooth } from "./lut";
  * what a frame means.
  */
 
+/**
+ * Both rigs anchor their subject at 38% of viewport height: the 2D rider
+ * parks there; the 3D camera derives its ride t from the same screen line so
+ * a tier switch lands at the same spot on the mountain.
+ */
+export const SCREEN_ANCHOR = 0.38;
+
+/** Ride progress for a scroll position — shared by the 2D and 3D rigs. */
+export function scrollToT(scrollPos: number, containerH: number): number {
+  const anchorY = scrollPos + window.innerHeight * SCREEN_ANCHOR;
+  return Math.min(1, Math.max(0, anchorY / containerH));
+}
+
 export interface ScrollLoopOptions {
   /** Smoother time constant, ms. */
   tauMs?: number;

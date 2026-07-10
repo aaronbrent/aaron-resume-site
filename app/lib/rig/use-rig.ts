@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { trails } from "~/content/trails";
 import { samplePath } from "~/lib/trail/validate";
-import { createScrollLoop } from "./core";
+import { createScrollLoop, SCREEN_ANCHOR, scrollToT } from "./core";
 import { buildLut, sampleLut, type Lut } from "./lut";
 import {
   deriveMotionChannels,
@@ -22,7 +22,7 @@ import { createSpray, type Spray, type SprayFrame } from "./spray";
  * (before first paint, closes the deep-link flash window) → LUT → listeners.
  */
 
-export const RIDER_SCREEN_ANCHOR = 0.38; // rider parks at 38% of viewport height
+export const RIDER_SCREEN_ANCHOR = SCREEN_ANCHOR; // rider parks at 38% of viewport height
 const TAU_MS = 110; // smoother time constant — HUD-tunable territory (risk #2)
 const SETTLE_PX = 0.4;
 
@@ -104,8 +104,7 @@ export function startRig(
   }
 
   function apply(scrollPos: number, velocity: number, frameMs: number): boolean {
-    const anchorY = scrollPos + window.innerHeight * RIDER_SCREEN_ANCHOR;
-    const t = Math.min(1, Math.max(0, anchorY / containerH));
+    const t = scrollToT(scrollPos, containerH);
     const s = sampleLut(lut, t);
     const sx = containerW / 1000;
     const sy = containerH / lut.height;
@@ -249,14 +248,19 @@ export function startRig(
   };
 }
 
-/** Mounts the rig against #rider / .run-container once, pre-paint. */
-export function useRig(onFrame?: (t: RigTelemetry) => void) {
+/**
+ * Mounts the rig against #rider / .run-container, pre-paint. `enabled` is the
+ * tier gate: Tier 2 keeps the 2D rig running only until the 3D view is ready
+ * (PLAN-3D §6 — the map carries the run while the summit open warms).
+ */
+export function useRig(onFrame?: (t: RigTelemetry) => void, enabled = true) {
   const onFrameRef = useRef(onFrame);
   onFrameRef.current = onFrame;
   useLayoutEffect(() => {
+    if (!enabled) return;
     const rider = document.querySelector<HTMLElement>("[data-rider]");
     const container = document.querySelector<HTMLElement>(".run-container");
     if (!rider || !container) return;
     return startRig({ rider, container }, (t) => onFrameRef.current?.(t));
-  }, []);
+  }, [enabled]);
 }
