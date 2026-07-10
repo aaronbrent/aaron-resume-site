@@ -55,6 +55,24 @@ test.describe("document structure", () => {
     await expect(page.locator("[data-print-hidden]").first()).toBeHidden();
   });
 
+  test("the closed-trail postscript never overlaps the last waypoint card", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const last = await page.locator("section#nuvalabs").boundingBox();
+    const closed = await page.locator("[data-closed-trail-card]").boundingBox();
+    expect(last).not.toBeNull();
+    expect(closed).not.toBeNull();
+    // Desktop separates the two by column (x); mobile stacks them (y). Either
+    // way their boxes must not intersect, or the semi-opaque card bleeds text.
+    const intersects =
+      last!.x < closed!.x + closed!.width &&
+      closed!.x < last!.x + last!.width &&
+      last!.y < closed!.y + closed!.height &&
+      closed!.y < last!.y + last!.height;
+    expect(intersects).toBe(false);
+  });
+
   test("keyboard traversal reaches contact links in document order", async ({ page }) => {
     await page.goto("/");
     const hrefs: string[] = [];

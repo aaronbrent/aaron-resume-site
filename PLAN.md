@@ -82,18 +82,19 @@ Content reveals are not the rig's job: server-rendered sections get a one-time I
 - **Scroll height is derived, never magic:**
 
 ```
-runHeight = INTRO(100svh) + waypoints × DWELL(160svh) + OUTRO(140svh)
-          = 100 + 4×160 + 140 = 880svh   (~8.8 screens, ~60–90s at a natural pace)
+runHeight = INTRO(100svh) + waypoints × DWELL(160svh) + OUTRO(220svh)
+          = 100 + 4×160 + 220 = 960svh   (~9.6 screens, ~65–100s at a natural pace)
 ```
 
 - `DWELL` is the one tuning constant. Adding a 5th waypoint = add an object, run regenerates, page gets 160svh taller. Waypoint `t` values position both the SVG marker **and** the document section (via `top` spacing derived from `Δt × runHeight`, computed from pure data at build — no client facts, no hydration risk). DOM order = t order = visual order, always.
+- `OUTRO` is the runout below the last waypoint. Phase 5's closed-trail postscript lives here, so it must clear the tallest waypoint card once the run collapses to a single column on mobile — hence 220svh, not 140. The trail viewBox heights track `runHeight` (regenerate on change) so the non-uniform stretch stays near-square.
 
 ### Two paths, desktop and mobile — yes, they're different lines
 
 A 1440px mountain and a 390px portrait phone want different runs: mobile needs a taller, tighter line with more switchbacks to stay inside 1000 normalized units of width.
 
-- `trail.mobile.ts` — viewBox ≈ 1000 × 18,600 (390×844 device, 880svh). Portrait-first: this is the primary artifact.
-- `trail.desktop.ts` — viewBox ≈ 1000 × 5,400 (1440×900, 880svh). Wider carves, longer traverses.
+- `trail.mobile.ts` — viewBox ≈ 1000 × 20,291 (390×844 device, 960svh). Portrait-first: this is the primary artifact.
+- `trail.desktop.ts` — viewBox ≈ 1000 × 5,891 (1440×900, 960svh). Wider carves, longer traverses.
 
 **Swap without hydration mismatch:** both `<path>` elements are server-rendered into the SVG; a CSS media query displays exactly one. No JS decision, no mismatch, cost is one extra path string (~2 kB). The rig picks its LUT source via `matchMedia` and rebuilds only on an actual breakpoint crossing (a discrete, rare event where a one-frame re-init is acceptable).
 

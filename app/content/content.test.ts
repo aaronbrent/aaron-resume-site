@@ -78,9 +78,16 @@ describe("gondola", () => {
 describe("closed trail", () => {
   it("is a concise, post-run story placed after the career waypoints", () => {
     expect(closedTrail.id).toBe("closed-trail");
-    expect(closedTrail.t).toBeGreaterThan(waypoints.at(-1)!.t);
     expect(closedTrail.t).toBeLessThan(1);
     expect(closedTrail.story.length).toBeLessThanOrEqual(240);
+  });
+
+  it("clears the last (tallest) waypoint so the mobile card never overlaps it", () => {
+    // Single-column mobile stacks the postscript directly under NuvaLabs, which
+    // is the tallest card. It must sit well clear of that footprint — merely
+    // being > last.t (as the original 0.91 was) still lands on top of it.
+    const CLEARANCE_T = 0.12;
+    expect(closedTrail.t - waypoints.at(-1)!.t).toBeGreaterThanOrEqual(CLEARANCE_T);
   });
 });
 
@@ -88,6 +95,6 @@ describe("run meta", () => {
   it("matches the §2 derivation for the current waypoint count", () => {
     const total =
       runMeta.introSvh + waypoints.length * runMeta.dwellSvh + runMeta.outroSvh;
-    expect(total).toBe(880);
+    expect(total).toBe(960);
   });
 });

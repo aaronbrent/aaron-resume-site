@@ -4,7 +4,11 @@ import type { RunMeta } from "./types";
 export const runMeta = {
   dwellSvh: 160,
   introSvh: 100,
-  outroSvh: 140,
+  // Runout carries the post-career postscript (the closed trail) below the
+  // last — and tallest — waypoint before base camp. It must be long enough
+  // that the single-column mobile stack never lands the postscript on top of
+  // NuvaLabs. Trail viewBox heights (lib/trail/configs) scale with this.
+  outroSvh: 220,
 } as const satisfies RunMeta;
 
 export const site = {
