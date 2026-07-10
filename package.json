@@ -16,6 +16,7 @@
     "lighthouse": "lhci autorun",
     "trail:gen": "tsx scripts/trail-gen.ts",
     "trail:validate": "tsx scripts/trail-validate.ts",
+    "line:validate": "tsx scripts/line-validate.ts",
     "gen:template": "tsx scripts/gen-figma-template.ts"
   },
   "dependencies": {

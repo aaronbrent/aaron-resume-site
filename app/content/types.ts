@@ -72,3 +72,23 @@ export interface RunMeta {
   introSvh: number;
   outroSvh: number;
 }
+
+/** A control point on the 3D line (PLAN-3D §2). */
+export interface LinePoint {
+  /** World meters: x lateral, y elevation, z down-mountain. */
+  p: readonly [number, number, number];
+  /** Speed-profile multiplier; dwell benches ≈ 0.25. Default 1. */
+  speed?: number;
+  /**
+   * Pins this point's ride time to the waypoint's content `t`, so the camera
+   * passes the sign exactly when the hidden flow section scrolls past.
+   */
+  waypointId?: string;
+}
+
+/** The authored 3D run (PLAN-3D §2): typed control points, deterministic world. */
+export interface Line3D {
+  points: readonly LinePoint[];
+  /** Terrain noise seed — server, client, and CI build the same mountain. */
+  seed: number;
+}
