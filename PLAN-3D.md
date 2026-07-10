@@ -245,12 +245,12 @@ Each phase ends demoable and deployed to a preview. **Tier 1 e2e stays green in 
 
 ### Phase A — Gray-box drop (days 1–4) ✅ = you can ride the mountain
 
-- [ ] `rig-core` extraction: smoother/park-wake/telemetry shared; `rig-2d` = current behavior; **existing rig/map e2e green** on the refactor alone before any 3D lands
-- [ ] three.js dep, lazy `<DropIn>` chunk, tier gate v1 (reduced-motion / WebGL2 / toggle), bundle-size check wired into CI
-- [ ] `line.3d.ts` first authoring + Catmull-Rom → speed-profile LUT + `line:validate` in CI + unit tests vs. analytic curves
-- [ ] Camera on the line from native scroll: flat-shaded untextured heightfield, corridor carve, fog
-- [ ] HUD v2: tier, frame ms, draw calls, DPR, t
-- **Exit:** scroll carves a gray mountain at 60 fps on desktop and a mid-range phone; deep link `/#public` lands the camera at the right stretch; toggle returns a pixel-identical v1.
+- [x] `rig-core` extraction: smoother/park-wake/telemetry shared; `rig-2d` = current behavior; **existing rig/map e2e green** on the refactor alone before any 3D lands
+- [x] three.js dep, lazy `<DropIn>` chunk, tier gate v1 (reduced-motion / WebGL2 / toggle / `?tier=` override), bundle-size check wired into CI _(chunk 129.5 kB gz of the 180 budget; critical path 120.8 of 130)_
+- [x] `line.3d.ts` first authoring + Catmull-Rom → speed-profile LUT + `line:validate` in CI + unit tests vs. analytic curves _(1,355 m, 370 m drop, max 29°, comfort 8.4 m/s², dwells ≥ 4.1 s; the anchor warp makes the post-closed-trail schuss the fastest stretch — its line is dead straight by construction, and Phase D owns how that speed feels)_
+- [x] Camera on the line from native scroll: flat-shaded heightfield, corridor carve, paper fog _(lighting bakes into vertex colors → MeshBasicMaterial, so software GL — CI's Lighthouse, weakest devices — compiles and rasterizes it cheaply; 8 z-band chunks for frustum culling; init sliced across frames, ~300 ms worst-case TBT vs 2.6 s naive)_
+- [x] HUD v2: tier, init ms, fov, draw calls, DPR, t alongside the v1 fields
+- **Exit:** _emulated pass:_ scroll carves the mountain, deep link `/#public` lands the camera inside the Public.com dwell zone, toggle returns v1 with the rider rig live, 69/69 e2e green, Lighthouse ≥ 0.90 on software GL — **real-hardware 60 fps pass (desktop + mid-range phone) still needs your devices**, same as v1's Phase 3 gate.
 
 ### Phase B — The map stands up (days 5–8) ✅ = it looks like the site, not a tech demo
 
