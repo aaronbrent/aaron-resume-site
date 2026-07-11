@@ -40,7 +40,7 @@ export interface ForkOptions {
 }
 
 /** March along the LUT by an approximate metric distance (init-time only). */
-function advanceByMeters(
+export function advanceByMeters(
   lut: LineLut,
   fromT: number,
   distanceM: number,

@@ -19,7 +19,6 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
-import { closedTrail } from "~/content/closed-trail";
 import { line3d } from "~/content/line3d";
 import { waypoints } from "~/content/waypoints";
 import { contentAnchors } from "~/lib/line/anchors";
@@ -38,6 +37,8 @@ import { planTown } from "~/lib/world/town";
 import { deriveDynamics, emptyDynamics } from "./dynamics";
 import { ANIME, SUN_DIR } from "./palette";
 import { createMassif, createRidges } from "./ridges";
+import { createSignLayer, type SignLayer } from "./sign-layer";
+import { createSigns } from "./signs";
 import { createSky } from "./sky";
 import { createTown } from "./town";
 import { createContourMaterial } from "./terrain-material";
@@ -94,6 +95,14 @@ export interface Rig3dOptions {
   container: HTMLElement;
   /** POV overlay (board nose + mitten): driven per frame via CSS variables. */
   pov?: HTMLElement | null;
+  /** Sign layer DOM (ADR-8): panels projected onto the 3D signboards. */
+  signs?: {
+    layer: HTMLElement;
+    cameraEl: HTMLElement;
+    panels: ReadonlyMap<string, HTMLElement>;
+    /** Narrow-viewport read cards (the mobile magnetic pose). */
+    sheets?: ReadonlyMap<string, HTMLElement>;
+  } | null;
   onFrame?: (t: Rig3dTelemetry) => void;
   /** First rendered frame — the summit open's fade-in cue (§6). */
   onReady?: () => void;
@@ -110,6 +119,7 @@ export function startRig3d({
   canvas,
   container,
   pov,
+  signs,
   onFrame,
   onReady,
   onFallback,
@@ -122,6 +132,7 @@ export function startRig3d({
   let camera!: PerspectiveCamera;
   /** Sky + far ranges: follows the camera's position, never its rotation. */
   let backdrop: Group | undefined;
+  let signLayer: SignLayer | undefined;
   let lut!: ReturnType<typeof buildLineLut>;
   let loop!: ScrollLoop;
   const scene = new Scene();
@@ -180,6 +191,7 @@ export function startRig3d({
       camera.updateProjectionMatrix();
     }
     backdrop?.position.copy(camera.position); // infinitely-far scenery
+    signLayer?.update(t);
     if (pov) {
       const crouch = (EYE_HEIGHT_M - pose.eyeHeightM) / EYE_HEIGHT_M;
       pov.style.setProperty("--pov-bank", `${(pose.bankDeg * 0.55).toFixed(2)}deg`);
@@ -493,28 +505,22 @@ export function startRig3d({
       canvas.dataset.town = String(plan.buildings.length);
     }
 
-    // Gray-box waypoint posts beside the line, on the groomed apron — the
-    // deep-link landing markers. Real signage is Phase C.
-    const postGeometry = track(new BoxGeometry(0.5, 5, 0.3));
-    const postMaterial = track(new MeshBasicMaterial({ color: 0x6b747c }));
-    const anchored = [...waypoints.map((w) => w.id), closedTrail.id];
-    const posts = new InstancedMesh(postGeometry, postMaterial, anchored.length);
-    {
-      const m = new Matrix4();
-      const sample = emptyLineLutSample();
-      const anchorT = new Map(contentAnchors().map((a) => [a.id, a.t]));
-      anchored.forEach((id, i) => {
-        const s = sampleLineLut(lut, anchorT.get(id)!, sample);
-        // Stand the post on the corridor's edge, to the rider's right.
-        const side = 6;
-        const rx = s.tan[2];
-        const rz = -s.tan[0];
-        m.makeTranslation(s.pos[0] + rx * side, s.pos[1] + 2.5, s.pos[2] + rz * side);
-        posts.setMatrixAt(i, m);
+    // Trail signs at every junction and the closed trail (ADR-8): timber
+    // posts and boards in the scene; the words are DOM, projected onto the
+    // boards by the sign layer.
+    const signage = createSigns(lut);
+    signage.resources.forEach(track);
+    scene.add(signage.group);
+    if (signs) {
+      signLayer = createSignLayer({
+        layer: signs.layer,
+        cameraEl: signs.cameraEl,
+        panels: signs.panels,
+        sheets: signs.sheets,
+        placements: signage.placements,
+        camera,
       });
-      posts.instanceMatrix.needsUpdate = true;
     }
-    scene.add(posts);
 
     // Shader compilation off the render path where the driver allows it,
     // then a frame boundary so the first real render is its own task.
@@ -576,6 +582,7 @@ export function startRig3d({
     delete canvas.dataset.ready;
     delete canvas.dataset.t;
     delete document.documentElement.dataset.rideReady;
+    signLayer?.dispose();
     if (pov) {
       delete pov.dataset.ready;
       for (const name of ["--pov-bank", "--pov-yaw", "--pov-crouch", "--pov-exit"]) {
