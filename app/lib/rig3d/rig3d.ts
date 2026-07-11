@@ -33,7 +33,9 @@ import { createScrollLoop, scrollToT, type ScrollLoop } from "~/lib/rig/core";
 import { createNoise2D, fbm } from "~/lib/world/noise";
 import { scatterTrees } from "~/lib/world/scatter";
 import { createTerrainBuilder } from "~/lib/world/terrain";
-import { createRidges } from "./ridges";
+import { ANIME, SUN_DIR } from "./palette";
+import { createMassif, createRidges } from "./ridges";
+import { createSky } from "./sky";
 import { createContourMaterial } from "./terrain-material";
 
 /**
@@ -58,9 +60,12 @@ const LOOK_AHEAD_T = 0.006;
 const LOOK_HEIGHT_M = 1.1;
 const BASE_FOV_DEG = 65;
 const MAX_DPR = 2;
-const FOG_NEAR_M = 60;
-const FOG_FAR_M = 320;
-const CAMERA_FAR_M = 340;
+// Haze, not paper: fog reads as air now, thin enough that the valley below —
+// the town, the forests across the run — stays legible at distance (ADR-9
+// amended). The far plane reaches the sky dome and the hero massif.
+const FOG_NEAR_M = 80;
+const FOG_FAR_M = 780;
+const CAMERA_FAR_M = 4200;
 const TERRAIN_CELL_M = 4;
 const TERRAIN_CHUNKS = 8;
 const TERRAIN_ROW_SLICE = 96;
@@ -90,11 +95,6 @@ export interface Rig3dOptions {
   onFallback: (reason: string) => void;
 }
 
-function cssColor(name: string, fallback: string): Color {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
-  return new Color(value.trim() || fallback);
-}
-
 const smooth01 = (edge0: number, edge1: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -113,7 +113,8 @@ export function startRig3d({
   let containerH = container.offsetHeight;
   let renderer: WebGLRenderer | undefined;
   let camera!: PerspectiveCamera;
-  let ridges: Group | undefined;
+  /** Sky + far ranges: follows the camera's position, never its rotation. */
+  let backdrop: Group | undefined;
   let lut!: ReturnType<typeof buildLineLut>;
   let loop!: ScrollLoop;
   const scene = new Scene();
@@ -142,7 +143,7 @@ export function startRig3d({
     sampleLineLut(lut, t + LOOK_AHEAD_T, ahead);
     camera.position.set(eye.pos[0], eye.pos[1] + EYE_HEIGHT_M, eye.pos[2]);
     camera.lookAt(ahead.pos[0], ahead.pos[1] + LOOK_HEIGHT_M, ahead.pos[2]);
-    ridges?.position.copy(camera.position); // infinitely-far scenery
+    backdrop?.position.copy(camera.position); // infinitely-far scenery
     renderer!.render(scene, camera);
     canvas.dataset.t = t.toFixed(4);
     if (!ready) {
@@ -208,13 +209,8 @@ export function startRig3d({
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     telemetry.dpr = renderer.getPixelRatio();
 
-    const paper = cssColor("--color-paper", "#f4efe3");
-    const ink = cssColor("--color-ink", "#22303a");
-    const powder = cssColor("--color-powder", "#ffffff");
-    const evergreen = cssColor("--color-evergreen", "#2e5e4e");
-
-    scene.background = paper;
-    scene.fog = new Fog(paper, FOG_NEAR_M, FOG_FAR_M);
+    scene.background = ANIME.haze;
+    scene.fog = new Fog(ANIME.haze, FOG_NEAR_M, FOG_FAR_M);
     camera = new PerspectiveCamera(
       BASE_FOV_DEG,
       window.innerWidth / window.innerHeight,
@@ -226,22 +222,28 @@ export function startRig3d({
     // contour-line signature shader draws on top.
     const terrainMaterial = track(
       createContourMaterial({
-        ink,
-        fogColor: paper,
+        line: ANIME.contour,
+        fogColor: ANIME.haze,
         fogNear: FOG_NEAR_M,
         fogFar: FOG_FAR_M,
       }),
     );
 
+    // The vault and the distance: sky dome + sun + clouds and the painted
+    // ranges ride along with the camera; the hero massif stands in the world
+    // down-valley, so the descent parallaxes against it (ADR-9 amended).
     await yieldFrame();
     if (disposed) return;
-    ridges = createRidges(paper, ink, camera.far, line3d.seed);
-    for (const child of ridges.children) {
-      const mesh = child as Mesh;
-      track(mesh.geometry);
-      track(mesh.material as MeshBasicMaterial);
-    }
-    scene.add(ridges);
+    backdrop = new Group();
+    const sky = createSky(line3d.seed);
+    const ridges = createRidges(line3d.seed);
+    sky.resources.forEach(track);
+    ridges.resources.forEach(track);
+    backdrop.add(sky.group, ridges.group);
+    scene.add(backdrop);
+    const massif = createMassif(line3d.seed);
+    massif.resources.forEach(track);
+    scene.add(massif.group);
 
     await yieldFrame();
     if (disposed) return;
@@ -257,17 +259,17 @@ export function startRig3d({
     }
 
     // Flat-shaded facets: expand to non-indexed triangles, bake the palette
-    // (powder snowfields, ink-tinted rock on steep faces, an aged-paper wash)
-    // with one lambert shade per face, split into z-band chunks so frustum
-    // culling skips what fog hides.
+    // (warm-lit snow, saturated blue shadow, sienna rock on the steeps, a
+    // hazy noise wash) with one golden-hour shade per face, split into z-band
+    // chunks so frustum culling skips what fog hides.
     const tintNoise = createNoise2D(line3d.seed ^ 0x7a9e);
-    const rock = new Color().copy(powder).lerp(ink, 0.5);
+    const snowColor = new Color();
+    const rockColor = new Color();
     const faceColor = new Color();
     const triCount = builder.indices.length / 3;
-    const sunLen = Math.hypot(-0.45, 0.8, -0.35);
-    const sx = -0.45 / sunLen;
-    const sy = 0.8 / sunLen;
-    const sz = -0.35 / sunLen;
+    const sx = SUN_DIR.x;
+    const sy = SUN_DIR.y;
+    const sz = SUN_DIR.z;
     const chunkTris = Math.ceil(triCount / TERRAIN_CHUNKS);
     for (let chunkStart = 0; chunkStart < triCount; chunkStart += chunkTris) {
       const chunkEnd = Math.min(chunkStart + chunkTris, triCount);
@@ -295,15 +297,18 @@ export function startRig3d({
           nz /= nLen;
           const cx = (p[ia]! + p[ib]! + p[ic]!) / 3;
           const cz = (p[ia + 2]! + p[ib + 2]! + p[ic + 2]!) / 3;
-          // Steep faces break through the snow as ink-tinted rock.
-          const rockMix = 1 - smooth01(0.7, 0.84, ny);
-          const wash = (fbm(tintNoise, cx * 0.02, cz * 0.02, 2) * 0.5 + 0.5) * 0.12;
-          const shade = 0.86 + 0.14 * Math.max(0, nx * sx + ny * sy + nz * sz);
+          // Steep faces break through the snow as sienna rock; every face
+          // blends its lit and shadow paint by how squarely it takes the low
+          // sun — snow that faces away goes properly blue.
+          const rockMix = 1 - smooth01(0.58, 0.74, ny);
+          const wash = (fbm(tintNoise, cx * 0.02, cz * 0.02, 2) * 0.5 + 0.5) * 0.1;
+          const lit = smooth01(-0.08, 0.62, Math.max(0, nx * sx + ny * sy + nz * sz));
+          snowColor.copy(ANIME.snowShade).lerp(ANIME.snowLit, lit);
+          rockColor.copy(ANIME.rockShade).lerp(ANIME.rockLit, lit);
           faceColor
-            .copy(powder)
-            .lerp(rock, rockMix)
-            .lerp(paper, wash)
-            .multiplyScalar(shade);
+            .copy(snowColor)
+            .lerp(rockColor, rockMix * 0.88)
+            .lerp(ANIME.haze, wash);
           const o = (tri - chunkStart) * 9;
           for (let v = 0; v < 3; v++) {
             const src = v === 0 ? ia : v === 1 ? ib : ic;
@@ -327,7 +332,8 @@ export function startRig3d({
       if (disposed) return;
     }
 
-    // Treeline: two instanced draws, deterministic from the content seed.
+    // Treeline: three instanced draws (canopy, trunk, snow dust on the
+    // crown), deterministic from the content seed.
     const trees = scatterTrees(lut, line3d.seed);
     await yieldFrame();
     if (disposed) return;
@@ -335,12 +341,14 @@ export function startRig3d({
     canopyGeometry.translate(0, 0.62, 0);
     const trunkGeometry = track(new CylinderGeometry(0.045, 0.07, 0.32, 5));
     trunkGeometry.translate(0, 0.16, 0);
+    const dustGeometry = track(new ConeGeometry(0.31, 0.46, 6));
+    dustGeometry.translate(0, 0.82, 0);
     const canopyMaterial = track(new MeshBasicMaterial({ color: 0xffffff }));
-    const trunkMaterial = track(
-      new MeshBasicMaterial({ color: new Color().copy(ink).lerp(paper, 0.3) }),
-    );
+    const trunkMaterial = track(new MeshBasicMaterial({ color: ANIME.trunk }));
+    const dustMaterial = track(new MeshBasicMaterial({ color: ANIME.snowDust }));
     const canopies = new InstancedMesh(canopyGeometry, canopyMaterial, trees.length);
     const trunks = new InstancedMesh(trunkGeometry, trunkMaterial, trees.length);
+    const dust = new InstancedMesh(dustGeometry, dustMaterial, trees.length);
     {
       const m = new Matrix4();
       const q = new Quaternion();
@@ -359,7 +367,12 @@ export function startRig3d({
           m.compose(pos, q, scale);
           canopies.setMatrixAt(i, m);
           trunks.setMatrixAt(i, m);
-          tint.copy(evergreen).offsetHSL(0, 0, tree.tint * 0.045);
+          dust.setMatrixAt(i, m);
+          // Cold spruce, bluer in the woods' shadowed patches.
+          tint
+            .copy(ANIME.spruce)
+            .lerp(ANIME.spruceShade, 0.3 + 0.3 * Math.abs(tree.tint))
+            .offsetHSL(0, 0, tree.tint * 0.03);
           canopies.setColorAt(i, tint);
         }
         await yieldFrame();
@@ -367,17 +380,16 @@ export function startRig3d({
       }
       canopies.instanceMatrix.needsUpdate = true;
       trunks.instanceMatrix.needsUpdate = true;
+      dust.instanceMatrix.needsUpdate = true;
       if (canopies.instanceColor) canopies.instanceColor.needsUpdate = true;
     }
-    scene.add(canopies, trunks);
+    scene.add(canopies, trunks, dust);
 
     // The lift line climbs past drop 1 to the summit station — the gondola
     // credits' eventual 3D home (Phase E stretch); towers + cable for now.
     const towerPostGeometry = track(new BoxGeometry(0.7, 11, 0.7));
     const towerArmGeometry = track(new BoxGeometry(5.5, 0.5, 0.5));
-    const steel = track(
-      new MeshBasicMaterial({ color: new Color().copy(ink).lerp(paper, 0.2) }),
-    );
+    const steel = track(new MeshBasicMaterial({ color: ANIME.steel }));
     const towerPosts = new InstancedMesh(towerPostGeometry, steel, LIFT_TOWERS);
     const towerArms = new InstancedMesh(towerArmGeometry, steel, LIFT_TOWERS);
     const cablePoints = new Float32Array(LIFT_TOWERS * 3);
@@ -401,7 +413,10 @@ export function startRig3d({
     }
     const cableGeometry = track(new BufferGeometry());
     cableGeometry.setAttribute("position", new BufferAttribute(cablePoints, 3));
-    const cable = new Line(cableGeometry, track(new LineBasicMaterial({ color: ink })));
+    const cable = new Line(
+      cableGeometry,
+      track(new LineBasicMaterial({ color: ANIME.steel })),
+    );
     scene.add(towerPosts, towerArms, cable);
 
     // Gray-box waypoint posts beside the line, on the groomed apron — the
@@ -442,7 +457,7 @@ export function startRig3d({
       sampleLineLut(lut, t0 + LOOK_AHEAD_T, ahead);
       camera.position.set(eye.pos[0], eye.pos[1] + EYE_HEIGHT_M, eye.pos[2]);
       camera.lookAt(ahead.pos[0], ahead.pos[1] + LOOK_HEIGHT_M, ahead.pos[2]);
-      ridges?.position.copy(camera.position);
+      backdrop?.position.copy(camera.position);
       renderer.setSize(8, 8, false);
       renderer.render(scene, camera);
       renderer.setSize(window.innerWidth, window.innerHeight, false);
