@@ -32,7 +32,7 @@ async function main() {
   if (process.env.BARE === "1") {
     await page.addStyleTag({
       content:
-        "body > * { visibility: hidden !important; } .run-canvas { visibility: visible !important; }",
+        "body > * { visibility: hidden !important; } .run-canvas, .pov-rider, .pov-rider img { visibility: visible !important; }",
     });
   }
   for (const t of ts) {

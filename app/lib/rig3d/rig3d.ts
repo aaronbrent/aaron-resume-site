@@ -34,6 +34,7 @@ import { createNoise2D, fbm } from "~/lib/world/noise";
 import { scatterTrees } from "~/lib/world/scatter";
 import { createTerrainBuilder } from "~/lib/world/terrain";
 import { planTown } from "~/lib/world/town";
+import { deriveDynamics, emptyDynamics } from "./dynamics";
 import { ANIME, SUN_DIR } from "./palette";
 import { createMassif, createRidges } from "./ridges";
 import { createSky } from "./sky";
@@ -58,7 +59,6 @@ import { createContourMaterial } from "./terrain-material";
  */
 
 const EYE_HEIGHT_M = 1.7;
-const LOOK_AHEAD_T = 0.006;
 const LOOK_HEIGHT_M = 1.1;
 const BASE_FOV_DEG = 65;
 const MAX_DPR = 2;
@@ -84,12 +84,15 @@ export interface Rig3dTelemetry {
   draws: number;
   dpr: number;
   fovDeg: number;
+  bankDeg: number;
   initMs: number;
 }
 
 export interface Rig3dOptions {
   canvas: HTMLCanvasElement;
   container: HTMLElement;
+  /** POV overlay (board nose + mitten): driven per frame via CSS variables. */
+  pov?: HTMLElement | null;
   onFrame?: (t: Rig3dTelemetry) => void;
   /** First rendered frame — the summit open's fade-in cue (§6). */
   onReady?: () => void;
@@ -105,6 +108,7 @@ const smooth01 = (edge0: number, edge1: number, x: number) => {
 export function startRig3d({
   canvas,
   container,
+  pov,
   onFrame,
   onReady,
   onFallback,
@@ -127,6 +131,10 @@ export function startRig3d({
   };
   const eye: LineLutSample = emptyLineLutSample();
   const ahead: LineLutSample = emptyLineLutSample();
+  // Dynamics targets derive fresh each frame; the pose channels ease toward
+  // them (lens slower than body), and the loop stays awake until they settle.
+  const targets = emptyDynamics();
+  const pose = emptyDynamics();
   const telemetry: Rig3dTelemetry = {
     t: 0,
     velocity: 0,
@@ -136,28 +144,55 @@ export function startRig3d({
     draws: 0,
     dpr: 1,
     fovDeg: BASE_FOV_DEG,
+    bankDeg: 0,
     initMs: 0,
   };
 
   function apply(scrollPos: number, velocity: number, frameMs: number): boolean {
     const t = scrollToT(scrollPos, containerH);
     sampleLineLut(lut, t, eye);
-    sampleLineLut(lut, t + LOOK_AHEAD_T, ahead);
+    deriveDynamics(eye, targets);
+
+    // Ease pose toward the targets — the body settles quicker than the lens.
+    // frameMs 0 is a snap (resize, deep link, first frame): land instantly.
+    const bodyEase = frameMs <= 0 ? 1 : 1 - Math.exp(-frameMs / 170);
+    const lensEase = frameMs <= 0 ? 1 : 1 - Math.exp(-frameMs / 340);
+    pose.bankDeg += (targets.bankDeg - pose.bankDeg) * bodyEase;
+    pose.boardYawDeg += (targets.boardYawDeg - pose.boardYawDeg) * bodyEase;
+    pose.eyeHeightM += (targets.eyeHeightM - pose.eyeHeightM) * bodyEase;
+    pose.lookAheadT += (targets.lookAheadT - pose.lookAheadT) * lensEase;
+    pose.fovDeg += (targets.fovDeg - pose.fovDeg) * lensEase;
+
+    sampleLineLut(lut, t + pose.lookAheadT, ahead);
     // Past the line's end the ahead sample collapses onto the eye; carry the
     // gaze along the final tangent instead — over the brink, at the town.
-    if (t + LOOK_AHEAD_T >= 1) {
+    if (t + pose.lookAheadT >= 1) {
       ahead.pos[0] = eye.pos[0] + eye.tan[0] * 12;
       ahead.pos[1] = eye.pos[1] + eye.tan[1] * 12;
       ahead.pos[2] = eye.pos[2] + eye.tan[2] * 12;
     }
-    camera.position.set(eye.pos[0], eye.pos[1] + EYE_HEIGHT_M, eye.pos[2]);
+    camera.position.set(eye.pos[0], eye.pos[1] + pose.eyeHeightM, eye.pos[2]);
     camera.lookAt(ahead.pos[0], ahead.pos[1] + LOOK_HEIGHT_M, ahead.pos[2]);
+    camera.rotateZ((-pose.bankDeg * Math.PI) / 180);
+    if (Math.abs(camera.fov - pose.fovDeg) > 0.01) {
+      camera.fov = pose.fovDeg;
+      camera.updateProjectionMatrix();
+    }
     backdrop?.position.copy(camera.position); // infinitely-far scenery
+    if (pov) {
+      const crouch = (EYE_HEIGHT_M - pose.eyeHeightM) / EYE_HEIGHT_M;
+      pov.style.setProperty("--pov-bank", `${(pose.bankDeg * 0.55).toFixed(2)}deg`);
+      pov.style.setProperty("--pov-yaw", `${pose.boardYawDeg.toFixed(2)}deg`);
+      pov.style.setProperty("--pov-crouch", crouch.toFixed(3));
+      // The rider steps out of frame as the run parks over the town.
+      pov.style.setProperty("--pov-exit", (1 - smooth01(0.965, 0.99, t)).toFixed(3));
+    }
     renderer!.render(scene, camera);
     canvas.dataset.t = t.toFixed(4);
     if (!ready) {
       ready = true;
       canvas.dataset.ready = "true";
+      if (pov) pov.dataset.ready = "true";
       document.documentElement.dataset.rideReady = "true";
       onReady?.();
     }
@@ -170,9 +205,15 @@ export function startRig3d({
       telemetry.draws = renderer!.info.render.calls;
       telemetry.dpr = renderer!.getPixelRatio();
       telemetry.fovDeg = camera.fov;
+      telemetry.bankDeg = pose.bankDeg;
       onFrame(telemetry);
     }
-    return false;
+    // Stay awake while the pose is still easing toward its targets.
+    return (
+      Math.abs(targets.bankDeg - pose.bankDeg) > 0.05 ||
+      Math.abs(targets.fovDeg - pose.fovDeg) > 0.05 ||
+      Math.abs(targets.eyeHeightM - pose.eyeHeightM) > 0.003
+    );
   }
 
   function snap() {
@@ -473,12 +514,18 @@ export function startRig3d({
 
     // Warm-up: an 8×8 render from the real starting view pays the buffer
     // uploads in its own task, so the first visible frame is raster only.
+    // The pose starts settled on its targets — no ease-in on first paint.
     {
       const t0 = scrollToT(window.scrollY, containerH);
       sampleLineLut(lut, t0, eye);
-      sampleLineLut(lut, t0 + LOOK_AHEAD_T, ahead);
-      camera.position.set(eye.pos[0], eye.pos[1] + EYE_HEIGHT_M, eye.pos[2]);
+      deriveDynamics(eye, targets);
+      Object.assign(pose, targets);
+      sampleLineLut(lut, t0 + pose.lookAheadT, ahead);
+      camera.fov = pose.fovDeg;
+      camera.updateProjectionMatrix();
+      camera.position.set(eye.pos[0], eye.pos[1] + pose.eyeHeightM, eye.pos[2]);
       camera.lookAt(ahead.pos[0], ahead.pos[1] + LOOK_HEIGHT_M, ahead.pos[2]);
+      camera.rotateZ((-pose.bankDeg * Math.PI) / 180);
       backdrop?.position.copy(camera.position);
       renderer.setSize(8, 8, false);
       renderer.render(scene, camera);
@@ -518,6 +565,12 @@ export function startRig3d({
     delete canvas.dataset.ready;
     delete canvas.dataset.t;
     delete document.documentElement.dataset.rideReady;
+    if (pov) {
+      delete pov.dataset.ready;
+      for (const name of ["--pov-bank", "--pov-yaw", "--pov-crouch", "--pov-exit"]) {
+        pov.style.removeProperty(name);
+      }
+    }
     for (const resource of disposables) resource.dispose();
     renderer?.dispose();
   };
