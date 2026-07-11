@@ -6,6 +6,12 @@ import type { Line3D } from "./types.ts";
  * waypoint's content `t` (the LUT warps time between anchors), so the camera
  * reaches each sign exactly when the hidden flow section scrolls past.
  *
+ * Every career bench is entered by a real junction turn: the fall line keeps
+ * going (the terrain carves that decoy path), and the ride carves off onto a
+ * side track — left or right matching the waypoint's content side — so each
+ * benchmark reads as choosing a trail. The camera's bank and yaw derive from
+ * this geometry; nothing is keyframed.
+ *
  * Authoring rules the validator enforces (`pnpm line:validate`):
  * fall-line grades 8°–38°, dwell benches ≤ 4.5° at speed ≤ 0.35, descent
  * monotonic, carve tightness capped by κ·v² comfort at reference pace. The
@@ -22,48 +28,54 @@ export const line3d = {
     { p: [6, 584, 63] },
     { p: [8, 568, 108] },
     { p: [6, 552, 152] },
-    { p: [0, 536, 195], speed: 0.6 },
-    // SoFi bench.
-    { p: [5, 535.2, 213], speed: 0.32 },
-    { p: [8, 534.7, 225], speed: 0.25, waypointId: "sofi" },
-    { p: [11, 534.2, 237], speed: 0.32 },
-    { p: [14, 532, 257], speed: 0.55 },
-    // Drop 2: long left-then-right S.
-    { p: [8, 517, 300] },
-    { p: [0, 500, 345] },
-    { p: [2, 483, 390] },
-    { p: [8, 467, 433], speed: 0.6 },
-    // Public.com bench.
-    { p: [13, 466.2, 451], speed: 0.32 },
-    { p: [16, 465.7, 463], speed: 0.25, waypointId: "public" },
-    { p: [19, 465.2, 475], speed: 0.32 },
-    { p: [24, 463, 495], speed: 0.55 },
+    { p: [4, 538, 188], speed: 0.6 },
+    // SoFi junction: the run forks; carve LEFT onto the bench track.
+    { p: [0, 536.2, 200], speed: 0.4 },
+    { p: [-8, 535.4, 212], speed: 0.3 },
+    { p: [-16, 534.8, 223], speed: 0.25, waypointId: "sofi" },
+    { p: [-24, 534.2, 234], speed: 0.3 },
+    { p: [-30, 533.4, 247], speed: 0.42 },
+    // Exit: swing back toward the fall line into drop 2's S.
+    { p: [-32, 530, 264], speed: 0.6 },
+    { p: [-26, 515, 305] },
+    { p: [-14, 498, 350] },
+    { p: [-8, 481, 395] },
+    { p: [-8, 466, 430], speed: 0.6 },
+    // Public.com junction: carve RIGHT onto the bench track.
+    { p: [-4, 464.4, 443], speed: 0.4 },
+    { p: [4, 463.6, 455], speed: 0.3 },
+    { p: [12, 463.0, 466], speed: 0.25, waypointId: "public" },
+    { p: [20, 462.4, 477], speed: 0.3 },
+    { p: [26, 461.6, 490], speed: 0.42 },
     // Drop 3: the traverse-flavored stretch, drifting right and back.
-    { p: [38, 447, 538] },
-    { p: [46, 431, 583] },
-    { p: [40, 415, 628] },
-    { p: [30, 400, 668], speed: 0.6 },
-    // Empirium bench.
-    { p: [25, 399.2, 686], speed: 0.32 },
-    { p: [22, 398.7, 698], speed: 0.25, waypointId: "empirium" },
-    { p: [19, 398.2, 710], speed: 0.32 },
-    { p: [14, 396, 730], speed: 0.55 },
+    { p: [30, 458, 508], speed: 0.6 },
+    { p: [40, 444, 548] },
+    { p: [48, 429, 592] },
+    { p: [44, 414, 636] },
+    { p: [38, 402, 672], speed: 0.6 },
+    // Empirium junction: carve LEFT onto the bench track.
+    { p: [33, 400.4, 684], speed: 0.4 },
+    { p: [25, 399.6, 696], speed: 0.3 },
+    { p: [17, 399.0, 707], speed: 0.25, waypointId: "empirium" },
+    { p: [9, 398.4, 718], speed: 0.3 },
+    { p: [3, 397.6, 731], speed: 0.42 },
     // Drop 4: the double-black pitch, ~26°.
-    { p: [10, 375, 772] },
-    { p: [14, 353, 816] },
-    { p: [20, 331, 860] },
-    { p: [26, 313, 896], speed: 0.6 },
-    // NuvaLabs bench.
-    { p: [30, 312.2, 912], speed: 0.32 },
-    { p: [33, 311.7, 928], speed: 0.25, waypointId: "nuvalabs" },
-    { p: [36, 311.2, 944], speed: 0.32 },
-    { p: [41, 309, 962], speed: 0.55 },
-    // Runout: near-straight diagonal, then locked to the fall line — the
-    // whole finale keeps x = 56 (κ = 0) because the anchor-warped schuss is
-    // the fastest stretch of the ride and tolerates zero curvature.
-    { p: [50, 294, 1004] },
-    { p: [56, 279, 1048] },
-    { p: [58, 264, 1092] },
+    { p: [2, 392, 748], speed: 0.7 },
+    { p: [6, 372, 792] },
+    { p: [12, 350, 836] },
+    { p: [18, 330, 878], speed: 0.7 },
+    { p: [22, 318, 904], speed: 0.6 },
+    // NuvaLabs junction: carve RIGHT onto the bench track.
+    { p: [26, 316.4, 916], speed: 0.4 },
+    { p: [34, 315.6, 928], speed: 0.3 },
+    { p: [42, 315.0, 939], speed: 0.25, waypointId: "nuvalabs" },
+    { p: [50, 314.4, 950], speed: 0.3 },
+    { p: [56, 313.6, 963], speed: 0.42 },
+    // Runout: merge onto the fall line — the anchor-warped schuss is the
+    // fastest stretch, so its line straightens out by construction.
+    { p: [58, 302, 1000] },
+    { p: [58, 285, 1046] },
+    { p: [57, 268, 1090] },
     { p: [56, 253, 1120], speed: 0.5 },
     // Closed trail: a long bench sitting mostly before its anchor, where the
     // ride-time budget is generous (after t=0.955 only ~4s remain).

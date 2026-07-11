@@ -1,4 +1,5 @@
 import type { LineLut } from "../line/lut3d.ts";
+import { branchInfluence, type ForkBranch } from "./junctions.ts";
 import { createNoise2D, fbm } from "./noise.ts";
 
 /**
@@ -55,6 +56,8 @@ export interface TerrainOptions {
   valleyDropM?: number;
   /** Down-valley distance over which the basin opens and bottoms out. */
   valleyMouthM?: number;
+  /** Junction decoy trails to carve alongside the main corridor. */
+  branches?: readonly ForkBranch[];
 }
 
 const smoothstep = (edge0: number, edge1: number, x: number) => {
@@ -75,6 +78,7 @@ export function createTerrainBuilder(
   const shoulder = opts.corridorShoulderM ?? 20;
   const valleyDrop = opts.valleyDropM ?? 68;
   const valleyMouth = opts.valleyMouthM ?? 300;
+  const branches = opts.branches ?? [];
   const noise = createNoise2D(seed);
 
   let minX = Infinity;
@@ -160,13 +164,19 @@ export function createTerrainBuilder(
         const open = smoothstep(lineEndZ - 10, lineEndZ + valleyMouth, z);
         const u = Math.min(1, Math.max(0, (z - lineEndZ) / valleyMouth));
         const drop = valleyDrop * (1 - (1 - u) * (1 - u));
-        const idx = (r * (cols + 1) + c) * 3;
-        positions[idx] = x;
-        positions[idx + 1] =
+        let y =
           lineY -
           0.4 -
           drop +
           outside * (wall * (1 - open) + relief * (1 - 0.6 * open) + 0.4);
+        // Junction decoys: cut each untaken trail's shelf into the hillside.
+        for (const branch of branches) {
+          const cut = branchInfluence(branch, x, z);
+          if (cut.weight > 0) y += (cut.y - y) * cut.weight;
+        }
+        const idx = (r * (cols + 1) + c) * 3;
+        positions[idx] = x;
+        positions[idx + 1] = y;
         positions[idx + 2] = z;
       }
     }

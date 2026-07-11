@@ -32,6 +32,7 @@ import {
 import { createScrollLoop, scrollToT, type ScrollLoop } from "~/lib/rig/core";
 import { createNoise2D, fbm } from "~/lib/world/noise";
 import { scatterTrees } from "~/lib/world/scatter";
+import { deriveForkBranches } from "~/lib/world/junctions";
 import { createTerrainBuilder } from "~/lib/world/terrain";
 import { planTown } from "~/lib/world/town";
 import { deriveDynamics, emptyDynamics } from "./dynamics";
@@ -301,7 +302,16 @@ export function startRig3d({
 
     await yieldFrame();
     if (disposed) return;
-    const builder = createTerrainBuilder(lut, line3d.seed, { cellM: TERRAIN_CELL_M });
+    // The untaken trails: one decoy fork per career junction, carved into
+    // the heightfield and kept clear of trees (§5 amended).
+    const branches = deriveForkBranches(
+      lut,
+      waypoints.map((w) => ({ id: w.id, t: w.t })),
+    );
+    const builder = createTerrainBuilder(lut, line3d.seed, {
+      cellM: TERRAIN_CELL_M,
+      branches,
+    });
     for (let r = 0; r <= builder.rows; r += TERRAIN_ROW_SLICE) {
       builder.fillRows(r, Math.min(r + TERRAIN_ROW_SLICE, builder.rows + 1));
       await yieldFrame();
@@ -384,7 +394,7 @@ export function startRig3d({
 
     // Treeline: three instanced draws (canopy, trunk, snow dust on the
     // crown), deterministic from the content seed.
-    const trees = scatterTrees(lut, line3d.seed);
+    const trees = scatterTrees(lut, line3d.seed, { branches });
     await yieldFrame();
     if (disposed) return;
     const canopyGeometry = track(new ConeGeometry(0.42, 0.85, 6));
@@ -447,7 +457,8 @@ export function startRig3d({
       const m = new Matrix4();
       for (let i = 0; i < LIFT_TOWERS; i++) {
         const f = i / (LIFT_TOWERS - 1);
-        const x = -26 + 6 * f;
+        // West of the run, clear of the SoFi junction's bench track.
+        const x = -58 + 6 * f;
         const z = -30 + 265 * f;
         const ground = builder.heightAt(x, z);
         m.makeTranslation(x, ground + 5.2, z);

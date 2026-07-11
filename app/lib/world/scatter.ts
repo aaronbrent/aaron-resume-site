@@ -1,4 +1,5 @@
 import type { LineLut } from "../line/lut3d.ts";
+import { branchInfluence, type ForkBranch } from "./junctions.ts";
 import { createNoise2D, fbm } from "./noise.ts";
 
 /**
@@ -23,6 +24,8 @@ export interface ScatterOptions {
   /** Minimum lateral distance from the line, meters (clears bench aprons). */
   standoffM?: number;
   maxDistM?: number;
+  /** Junction decoy trails no tree may stand on. */
+  branches?: readonly ForkBranch[];
 }
 
 function mulberry32(seed: number) {
@@ -44,6 +47,7 @@ export function scatterTrees(
   const count = opts.count ?? 1800;
   const standoff = opts.standoffM ?? 16;
   const maxDist = opts.maxDistM ?? 130;
+  const branches = opts.branches ?? [];
   const rand = mulberry32(seed ^ 0x51ab7e);
   const noise = createNoise2D(seed ^ 0x0dd5ea);
   const trees: TreePlacement[] = [];
@@ -62,6 +66,18 @@ export function scatterTrees(
     const z = pz + rz * dist * side + lut.tan[row * 3 + 2]! * along;
     // Forest patches: the noise field gates density so clearings exist.
     if (fbm(noise, x * 0.014, z * 0.014, 2) < 0.02) continue;
+    // Nothing grows on a groomed decoy trail (or its shoulders).
+    if (branches.some((b) => branchInfluence(b, x, z, 5).weight > 0.05)) continue;
+    // The local-frame offset above is only a proposal: on the inside of a
+    // carve it underestimates clearance, so verify true distance to the line.
+    let nearest2 = Infinity;
+    for (let j = 0; j < lut.n; j += 8) {
+      const dx = lut.pos[j * 3]! - x;
+      const dz = lut.pos[j * 3 + 2]! - z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < nearest2) nearest2 = d2;
+    }
+    if (nearest2 < standoff * standoff) continue;
     trees.push({
       x,
       z,
