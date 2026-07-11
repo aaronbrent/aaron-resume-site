@@ -27,6 +27,14 @@ async function main() {
   await page.waitForSelector("[data-run-canvas][data-ready='true']", {
     timeout: 30_000,
   });
+  // BARE=1: hide the document layers so only the canvas shows — for judging
+  // the world itself without cards and frame over it.
+  if (process.env.BARE === "1") {
+    await page.addStyleTag({
+      content:
+        "body > * { visibility: hidden !important; } .run-canvas { visibility: visible !important; }",
+    });
+  }
   for (const t of ts) {
     await page.evaluate((target) => {
       const container = document.querySelector<HTMLElement>(".run-container")!;

@@ -5,6 +5,7 @@ import { buildLineLut, emptyLineLutSample, sampleLineLut } from "../line/lut3d";
 import { createNoise2D } from "./noise";
 import { scatterTrees } from "./scatter";
 import { buildTerrain, createTerrainBuilder } from "./terrain";
+import { planTown } from "./town";
 
 const lut = buildLineLut(line3d.points, contentAnchors());
 
@@ -55,6 +56,41 @@ describe("the deterministic world (PLAN-3D §3)", () => {
     const b = createTerrainBuilder(lut, line3d.seed, { cellM: 8 });
     b.fillRows(0, b.rows + 1);
     expect(a.positions).toEqual(b.positions);
+  });
+
+  it("the valley basin opens past the runout: floor drops, walls collapse", () => {
+    const terrain = buildTerrain(lut, line3d.seed, { cellM: 4 });
+    const end = sampleLineLut(lut, 1, emptyLineLutSample());
+    const endX = end.pos[0];
+    const endZ = end.pos[2];
+    const endY = end.pos[1];
+    // The floor settles well below base camp…
+    const floor = terrain.heightAt(endX, endZ + 300);
+    expect(floor).toBeLessThan(endY - 40);
+    // …and stays a basin across its width instead of climbing valley walls.
+    const flank = terrain.heightAt(endX - 90, endZ + 300);
+    expect(Math.abs(flank - floor)).toBeLessThan(25);
+    // Upslope of the runout the walls still stand.
+    const wall = terrain.heightAt(endX - 90, endZ - 200);
+    const runout = terrain.heightAt(endX, endZ - 200);
+    expect(wall - runout).toBeGreaterThan(30);
+  });
+
+  it("the town plan is deterministic, spaced, and sits in the basin ellipse", () => {
+    const a = planTown(line3d.seed, { x: 68, z: 1540 });
+    const b = planTown(line3d.seed, { x: 68, z: 1540 });
+    expect(a).toEqual(b);
+    expect(a.buildings.length).toBeGreaterThan(25);
+    expect(a.buildings.some((building) => building.kind === "tower")).toBe(true);
+    for (let i = 0; i < a.buildings.length; i++) {
+      const p = a.buildings[i]!;
+      expect(Math.abs(p.x - 68)).toBeLessThan(130);
+      expect(Math.abs(p.z - 1540)).toBeLessThan(160);
+      for (let j = i + 1; j < a.buildings.length; j++) {
+        const q = a.buildings[j]!;
+        expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(4);
+      }
+    }
   });
 
   it("tree scatter is deterministic and clears the groomed corridor", () => {

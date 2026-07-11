@@ -33,9 +33,11 @@ import { createScrollLoop, scrollToT, type ScrollLoop } from "~/lib/rig/core";
 import { createNoise2D, fbm } from "~/lib/world/noise";
 import { scatterTrees } from "~/lib/world/scatter";
 import { createTerrainBuilder } from "~/lib/world/terrain";
+import { planTown } from "~/lib/world/town";
 import { ANIME, SUN_DIR } from "./palette";
 import { createMassif, createRidges } from "./ridges";
 import { createSky } from "./sky";
+import { createTown } from "./town";
 import { createContourMaterial } from "./terrain-material";
 
 /**
@@ -141,6 +143,13 @@ export function startRig3d({
     const t = scrollToT(scrollPos, containerH);
     sampleLineLut(lut, t, eye);
     sampleLineLut(lut, t + LOOK_AHEAD_T, ahead);
+    // Past the line's end the ahead sample collapses onto the eye; carry the
+    // gaze along the final tangent instead — over the brink, at the town.
+    if (t + LOOK_AHEAD_T >= 1) {
+      ahead.pos[0] = eye.pos[0] + eye.tan[0] * 12;
+      ahead.pos[1] = eye.pos[1] + eye.tan[1] * 12;
+      ahead.pos[2] = eye.pos[2] + eye.tan[2] * 12;
+    }
     camera.position.set(eye.pos[0], eye.pos[1] + EYE_HEIGHT_M, eye.pos[2]);
     camera.lookAt(ahead.pos[0], ahead.pos[1] + LOOK_HEIGHT_M, ahead.pos[2]);
     backdrop?.position.copy(camera.position); // infinitely-far scenery
@@ -418,6 +427,19 @@ export function startRig3d({
       track(new LineBasicMaterial({ color: ANIME.steel })),
     );
     scene.add(towerPosts, towerArms, cable);
+
+    // The ski town, on real basin ground past the runout — the run aims
+    // straight at it, and it resolves out of the haze as the ride descends.
+    await yieldFrame();
+    if (disposed) return;
+    {
+      const end = sampleLineLut(lut, 1, emptyLineLutSample());
+      const plan = planTown(line3d.seed, { x: end.pos[0] + 16, z: end.pos[2] + 330 });
+      const town = createTown(plan, builder.heightAt, line3d.seed);
+      town.resources.forEach(track);
+      scene.add(town.group);
+      canvas.dataset.town = String(plan.buildings.length);
+    }
 
     // Gray-box waypoint posts beside the line, on the groomed apron — the
     // deep-link landing markers. Real signage is Phase C.

@@ -81,8 +81,9 @@ function rangeRing(layer: RingLayer, renderOrder: number): Mesh {
     // Ridged relief sampled on the circle stays seamless at the wrap.
     const ridged = 1 - Math.abs(fbm(noise, cx * 2.2, sz * 2.2, 4));
     let relief = smooth01(0.25, 1, ridged);
-    // The vista notch: peaks bow out of the way of the valley view.
-    const notch = 1 - smooth01(layer.notchWidth, layer.notchWidth * 0.35, Math.abs(az));
+    // The vista notch: peaks bow out of the way of the valley view — full
+    // cut dead ahead, easing back to full relief at the notch's edge.
+    const notch = 1 - smooth01(layer.notchWidth * 0.35, layer.notchWidth, Math.abs(az));
     relief *= 1 - layer.notchDepth * notch;
     const peakY = layer.peakMinY + relief * (layer.peakMaxY - layer.peakMinY);
     const x = cx * layer.radius;

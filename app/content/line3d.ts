@@ -72,11 +72,13 @@ export const line3d = {
     { p: [56, 251.5, 1160], speed: 0.25, waypointId: "closed-trail" },
     { p: [56, 250.9, 1176], speed: 0.3 },
     { p: [56, 249.4, 1190], speed: 0.5 },
-    // Final schuss into base camp — dead straight, then the hockey stop.
+    // Final schuss into base camp — dead straight, and the hockey stop lands
+    // on the brink of the valley bowl: the last meters of bench sit right at
+    // the rollover, so the parked end frame looks over the town below.
     { p: [56, 239, 1214], speed: 0.9 },
-    { p: [56, 232, 1234], speed: 0.55 },
-    { p: [56, 230.5, 1246], speed: 0.4 },
-    { p: [56, 230, 1258], speed: 0.3 },
+    { p: [56, 231.8, 1238], speed: 0.5 },
+    { p: [56, 230.2, 1256], speed: 0.32 },
+    { p: [56, 229.9, 1264], speed: 0.26 },
     { p: [56, 229.7, 1270], speed: 0.25 },
   ],
 } as const satisfies Line3D;
