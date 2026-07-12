@@ -18,8 +18,13 @@ import { SIGN_BOARD_W_M, type SignPlacement } from "./signs";
 /** DOM panel width in CSS px — sets the meters-per-pixel projection scale. */
 export const SIGN_PANEL_W_PX = 340;
 
-/** Half-width of a sign's read zone in ride time. */
-const READ_ZONE_T = 0.016;
+/**
+ * The read zone in ride time: a short lead-in before the anchor and a long
+ * tail after it, because an anchor jump parks the camera ~0.028 past the
+ * anchor (the 38%-viewport camera line, §rig-core) and must land reading.
+ */
+const READ_BEFORE_T = 0.015;
+const READ_AFTER_T = 0.037;
 /** Panels farther than this from the camera don't render at all. */
 const VISIBLE_M = 170;
 
@@ -73,6 +78,7 @@ export function createSignLayer({
     z: number;
     near: boolean;
     read: boolean;
+    grow: number;
   }
   const entries: Entry[] = [];
   for (const p of placements) {
@@ -95,6 +101,7 @@ export function createSignLayer({
       z: p.center[2],
       near: false,
       read: false,
+      grow: 1,
     });
   }
 
@@ -121,25 +128,31 @@ export function createSignLayer({
           entry.near = near;
           entry.el.dataset.near = String(near);
         }
-        const read = Math.abs(t - entry.t) < READ_ZONE_T;
-        if (read !== entry.read) {
+        const read = t > entry.t - READ_BEFORE_T && t < entry.t + READ_AFTER_T;
+        const readChanged = read !== entry.read;
+        if (readChanged) {
           entry.read = read;
           entry.el.dataset.read = String(read);
           if (entry.sheet) entry.sheet.dataset.active = String(read);
-          const w = layer.clientWidth || window.innerWidth;
-          if (read && w >= 640) {
-            // Magnetic read (ADR-8): grow the card to a readable on-screen
-            // size for the distance where the dwell begins — the pose stays
-            // world-anchored and tilted; only its scale reaches for the eye.
-            // (Narrow viewports present the screen-space sheet instead.)
-            const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            const targetPx = Math.min(440, Math.max(300, w * 0.36));
-            const projectedPx = (SIGN_BOARD_W_M * perspPx) / Math.max(d, 1);
-            const grow = Math.min(4.5, Math.max(1.15, targetPx / projectedPx));
+        }
+        const w = layer.clientWidth || window.innerWidth;
+        if (read && w >= 640) {
+          // Magnetic read (ADR-8): grow the card to a readable on-screen size
+          // for the current distance — the pose stays world-anchored and
+          // tilted; only its scale reaches for the eye. Re-targeted in coarse
+          // steps as the ride closes in, so the CSS transition smooths each
+          // move. (Narrow viewports present the screen-space sheet instead.)
+          const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          const targetPx = Math.min(410, Math.max(300, w * 0.34));
+          const projectedPx = (SIGN_BOARD_W_M * perspPx) / Math.max(d, 1);
+          const grow = Math.min(4.5, Math.max(1, targetPx / projectedPx));
+          if (readChanged || Math.abs(grow - entry.grow) > entry.grow * 0.3) {
+            entry.grow = grow;
             entry.el.style.setProperty("--sign-scale", grow.toFixed(3));
-          } else {
-            entry.el.style.setProperty("--sign-scale", "1");
           }
+        } else if (readChanged) {
+          entry.grow = 1;
+          entry.el.style.setProperty("--sign-scale", "1");
         }
       }
     },

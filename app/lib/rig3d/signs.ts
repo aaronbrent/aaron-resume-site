@@ -28,7 +28,7 @@ import { ANIME } from "./palette";
 export const SIGN_BOARD_W_M = 3.4;
 export const SIGN_BOARD_H_M = 2.1;
 /** Board center height above the bench snow. */
-const BOARD_CENTER_Y_M = 2.35;
+const BOARD_CENTER_Y_M = 2.6;
 const STANDOFF_M = 7;
 
 export interface SignPlacement {
@@ -80,9 +80,9 @@ export function createSigns(lut: LineLut): Signs {
 
   signContent.forEach((sign, i) => {
     // Stand the sign down-track of the anchor so it faces the rider through
-    // the whole dwell: the read zone centers on the anchor, the board waits
-    // ahead of it, and the ride passes the sign as the zone releases.
-    const standT = advanceByMeters(lut, sign.t, 20, sample);
+    // the whole dwell — including a deep-link landing, which parks ~20 m past
+    // the anchor (the 38%-viewport camera line): the board still waits ahead.
+    const standT = advanceByMeters(lut, sign.t, 34, sample);
     const s = sampleLineLut(lut, standT, sample);
     // Stand on the groomed apron, on the waypoint's content side. Looking
     // down-mountain (+z), world +x reads as screen-left, so "right" is -x.

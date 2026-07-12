@@ -154,6 +154,64 @@ test.describe("the drop-in (Tier 2)", () => {
     expect(new URL(page.url()).searchParams.has("tier")).toBe(false);
   });
 
+  test("the world carries the anime set: sign layer, POV rider, town", async ({
+    page,
+  }) => {
+    await page.goto("/?gl=full");
+    await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
+    // The town stands in the valley basin, deterministic from the seed.
+    await expect(page.locator("[data-run-canvas]")).toHaveAttribute("data-town", "36");
+    // POV overlay is live and fully present mid-run.
+    const pov = page.locator("[data-pov-rider]");
+    await expect(pov).toHaveAttribute("data-ready", "true");
+    await expect(pov.locator("img")).toHaveCount(2);
+    // One sign panel per waypoint plus the closed trail, matrix3d-projected.
+    const panels = page.locator("[data-sign-id]");
+    await expect(panels).toHaveCount(5);
+    const transform = await panels.first().evaluate((el) => el.style.transform);
+    expect(transform).toContain("matrix3d");
+  });
+
+  test("a dwell zone opens its sign and quiets the flow card (magnetic read)", async ({
+    page,
+  }) => {
+    await page.goto("/?gl=full#public");
+    await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
+    await page.waitForTimeout(900);
+    const panel = page.locator("[data-sign-id='public']");
+    await expect(panel).toHaveAttribute("data-read", "true");
+    await expect(panel).toHaveAttribute("data-near", "true");
+    // The magnetic read grew the card toward a readable size.
+    const scale = await panel.evaluate((el) =>
+      Number(el.style.getPropertyValue("--sign-scale")),
+    );
+    expect(scale).toBeGreaterThan(1.1);
+    // Signs away from the dwell stay collapsed.
+    await expect(page.locator("[data-sign-id='sofi']")).toHaveAttribute(
+      "data-read",
+      "false",
+    );
+    // The flow document goes visually quiet while the sign carries the words
+    // — but stays in the DOM for SR, anchors, and print.
+    const section = page.locator("section#public");
+    await expect(section).toBeAttached();
+    await expect(section).toHaveCSS("opacity", "0");
+  });
+
+  test("a narrow viewport presents the dwell as a full-width read sheet", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/?gl=full#sofi");
+    await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
+    await page.waitForTimeout(900);
+    await expect(page.locator("[data-sheet-id='sofi']")).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    await expect(page.locator("[data-sheet-id='sofi']")).toBeVisible();
+  });
+
   test("the 3D layer stays out of the accessibility tree: axe = 0", async ({ page }) => {
     await page.goto("/?gl=full");
     await expect(page.locator("[data-run-canvas][data-ready='true']")).toBeAttached();
