@@ -73,7 +73,10 @@ export function createTerrainBuilder(
   const cell = opts.cellM ?? 3;
   const marginX = opts.marginX ?? 140;
   const marginZ = opts.marginZ ?? 90;
-  const marginZEnd = opts.marginZEndM ?? 420;
+  // The runtime town is centered 330 m past the runout and spans a 120 m
+  // basin radius. Leave additional ground beyond its rotated footprints so
+  // no chalet can overhang the heightfield's far edge.
+  const marginZEnd = opts.marginZEndM ?? 480;
   const corridor = opts.corridorHalfWidthM ?? 7;
   const shoulder = opts.corridorShoulderM ?? 20;
   const valleyDrop = opts.valleyDropM ?? 68;

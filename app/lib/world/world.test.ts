@@ -80,15 +80,24 @@ describe("the deterministic world (PLAN-3D §3)", () => {
   });
 
   it("the town plan is deterministic, spaced, and sits in the basin ellipse", () => {
-    const a = planTown(line3d.seed, { x: 68, z: 1540 });
-    const b = planTown(line3d.seed, { x: 68, z: 1540 });
+    const end = sampleLineLut(lut, 1, emptyLineLutSample());
+    const center = { x: end.pos[0] + 16, z: end.pos[2] + 330 };
+    const a = planTown(line3d.seed, center);
+    const b = planTown(line3d.seed, center);
+    const terrain = createTerrainBuilder(lut, line3d.seed, { cellM: 4 });
+    const terrainEndZ = terrain.minZ + terrain.rows * terrain.cellM;
     expect(a).toEqual(b);
     expect(a.buildings.length).toBeGreaterThan(25);
     expect(a.buildings.some((building) => building.kind === "tower")).toBe(true);
     for (let i = 0; i < a.buildings.length; i++) {
       const p = a.buildings[i]!;
-      expect(Math.abs(p.x - 68)).toBeLessThan(130);
-      expect(Math.abs(p.z - 1540)).toBeLessThan(160);
+      expect(Math.abs(p.x - center.x)).toBeLessThan(130);
+      expect(Math.abs(p.z - center.z)).toBeLessThan(160);
+      // Include the rotated footprint, not just its center: heightAt clamps
+      // outside the grid, which would otherwise hide a floating chalet bug.
+      const halfDepthZ =
+        (Math.abs(Math.sin(p.yaw)) * p.w + Math.abs(Math.cos(p.yaw)) * p.d) / 2;
+      expect(p.z + halfDepthZ).toBeLessThanOrEqual(terrainEndZ);
       for (let j = i + 1; j < a.buildings.length; j++) {
         const q = a.buildings[j]!;
         expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(4);
