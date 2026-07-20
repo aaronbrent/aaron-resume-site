@@ -227,7 +227,9 @@ export function createForest(
     const mesh = new InstancedMesh(geometry, material, members.length);
     members.forEach((tree, i) => {
       const ground = heightAt(tree.x, tree.z);
-      axis.set(Math.sin(tree.leanDir), 0, Math.cos(tree.leanDir));
+      // Lean toward leanDir: rotate about the ground-plane perpendicular
+      // (up × dir), so the crown tips the way the field says it does.
+      axis.set(Math.cos(tree.leanDir), 0, -Math.sin(tree.leanDir));
       q.setFromAxisAngle(axis, tree.lean);
       pos.set(tree.x, ground - 0.12 - tree.heightM * 0.04, tree.z);
       scale.set(tree.heightM * tree.width, tree.heightM, tree.heightM * tree.width);

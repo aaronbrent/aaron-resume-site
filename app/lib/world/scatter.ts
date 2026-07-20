@@ -21,7 +21,7 @@ export interface TreePlacement {
   heightM: number;
   /** Canopy lightness jitter ∈ [-1, 1] for instance color variation. */
   tint: number;
-  /** Which merged spruce geometry this tree instances (0..TREE_ARCHETYPES). */
+  /** Zero-based index of the merged spruce geometry this tree instances, in [0, archetypes). */
   archetype: number;
   /** Lean off vertical, radians — small, storm-bent. */
   lean: number;
@@ -67,7 +67,9 @@ export function scatterTrees(
   const standoff = opts.standoffM ?? 16;
   const maxDist = opts.maxDistM ?? 130;
   const branches = opts.branches ?? [];
-  const archetypes = opts.archetypes ?? 4;
+  // Guard the index space: a 0/negative/NaN archetype count would put NaN
+  // into every placement and blow up the renderer's modulo indexing.
+  const archetypes = Math.max(1, Math.floor(opts.archetypes ?? 4)) || 1;
   const rand = mulberry32(seed ^ 0x51ab7e);
   const noise = createNoise2D(seed ^ 0x0dd5ea);
   const trees: TreePlacement[] = [];
