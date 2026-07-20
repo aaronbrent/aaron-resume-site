@@ -1,4 +1,5 @@
 import type { LineLut } from "../line/lut3d.ts";
+import { branchInfluence, type ForkBranch } from "./junctions.ts";
 import { createNoise2D, fbm } from "./noise.ts";
 
 /**
@@ -14,6 +15,12 @@ import { createNoise2D, fbm } from "./noise.ts";
  * Height model per vertex: elevation of the nearest line row, plus valley
  * walls rising away from the corridor, plus fbm relief that fades to zero
  * inside the groomed corridor so the run itself stays clean.
+ *
+ * Past the run's end the mountain opens instead of walling off: the side
+ * walls collapse and the ground eases down into a broad valley basin — the
+ * flat that holds the ski town, with the vista (massif, ranges, sky) above
+ * it. The basin is part of the same heightfield, so buildings and trees
+ * placed by heightAt() sit on real ground.
  */
 
 export interface TerrainData {
@@ -39,10 +46,18 @@ export interface TerrainOptions {
   cellM?: number;
   /** Lateral margin beyond the line's x extent, meters. */
   marginX?: number;
-  /** Margin behind the summit / beyond the base, meters. */
+  /** Margin behind the summit, meters. */
   marginZ?: number;
+  /** Margin beyond the base — deep enough to hold the valley basin. */
+  marginZEndM?: number;
   corridorHalfWidthM?: number;
   corridorShoulderM?: number;
+  /** How far below base camp the valley floor settles. */
+  valleyDropM?: number;
+  /** Down-valley distance over which the basin opens and bottoms out. */
+  valleyMouthM?: number;
+  /** Junction decoy trails to carve alongside the main corridor. */
+  branches?: readonly ForkBranch[];
 }
 
 const smoothstep = (edge0: number, edge1: number, x: number) => {
@@ -58,8 +73,15 @@ export function createTerrainBuilder(
   const cell = opts.cellM ?? 3;
   const marginX = opts.marginX ?? 140;
   const marginZ = opts.marginZ ?? 90;
+  // The runtime town is centered 330 m past the runout and spans a 120 m
+  // basin radius. Leave additional ground beyond its rotated footprints so
+  // no chalet can overhang the heightfield's far edge.
+  const marginZEnd = opts.marginZEndM ?? 480;
   const corridor = opts.corridorHalfWidthM ?? 7;
   const shoulder = opts.corridorShoulderM ?? 20;
+  const valleyDrop = opts.valleyDropM ?? 68;
+  const valleyMouth = opts.valleyMouthM ?? 300;
+  const branches = opts.branches ?? [];
   const noise = createNoise2D(seed);
 
   let minX = Infinity;
@@ -72,10 +94,11 @@ export function createTerrainBuilder(
     minZ = Math.min(minZ, lut.pos[i * 3 + 2]!);
     maxZ = Math.max(maxZ, lut.pos[i * 3 + 2]!);
   }
+  const lineEndZ = maxZ;
   minX -= marginX;
   maxX += marginX;
   minZ -= marginZ;
-  maxZ += marginZ;
+  maxZ += marginZEnd;
 
   const cols = Math.ceil((maxX - minX) / cell);
   const rows = Math.ceil((maxZ - minZ) / cell);
@@ -101,6 +124,7 @@ export function createTerrainBuilder(
   // The authored line advances monotonically in z, so each grid row needs
   // only a local window of LUT rows for its nearest-line query.
   const zOf = (i: number) => lut.pos[i * 3 + 2]!;
+  const endLineX = lut.pos[(lut.n - 1) * 3]!;
 
   function fillRows(rStart: number, rEnd: number): void {
     let cursor = 0;
@@ -122,7 +146,10 @@ export function createTerrainBuilder(
             bestI = i;
           }
         }
-        const dist = Math.sqrt(bestD2);
+        // Past the line's end, distance to the end point would wall off the
+        // valley mouth; measure from the runout's continuation ray instead,
+        // so the corridor spills forward into the basin.
+        const dist = z > lineEndZ ? Math.abs(x - endLineX) : Math.sqrt(bestD2);
         const lineY = lut.pos[bestI * 3 + 1]!;
         // Dwell benches groom a wider apron: where the profile slows for a
         // sign, the flat corridor widens so the sign stands on groomed snow.
@@ -132,9 +159,27 @@ export function createTerrainBuilder(
         const wall = Math.min(90, (dist / 45) ** 1.7 * 20);
         const relief = fbm(noise, x * 0.011, z * 0.011, 3) * 14;
         const outside = smoothstep(apron, apron + shoulder, dist);
+        // The valley mouth: past the run's end the walls collapse and the
+        // ground falls away into the town basin. The drop is concave —
+        // steepest right at the brink, easing onto the floor — so the whole
+        // bowl (and the village in it) is visible from the runout instead of
+        // hiding behind its own rollover.
+        const open = smoothstep(lineEndZ - 10, lineEndZ + valleyMouth, z);
+        const u = Math.min(1, Math.max(0, (z - lineEndZ) / valleyMouth));
+        const drop = valleyDrop * (1 - (1 - u) * (1 - u));
+        let y =
+          lineY -
+          0.4 -
+          drop +
+          outside * (wall * (1 - open) + relief * (1 - 0.6 * open) + 0.4);
+        // Junction decoys: cut each untaken trail's shelf into the hillside.
+        for (const branch of branches) {
+          const cut = branchInfluence(branch, x, z);
+          if (cut.weight > 0) y += (cut.y - y) * cut.weight;
+        }
         const idx = (r * (cols + 1) + c) * 3;
         positions[idx] = x;
-        positions[idx + 1] = lineY - 0.4 + outside * (wall + relief + 0.4);
+        positions[idx + 1] = y;
         positions[idx + 2] = z;
       }
     }

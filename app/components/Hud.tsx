@@ -70,7 +70,7 @@ export function writeHud3d(tel: Rig3dTelemetry) {
   set("curve", `fov     ${tel.fovDeg.toFixed(1)}°`);
   set("vel", `vel     ${tel.velocity.toFixed(2)} px/ms`);
   set("pose", "");
-  set("lean", "");
+  set("lean", `bank    ${tel.bankDeg.toFixed(1)}°`);
   set("spray", "");
   set("draws", `draws   ${tel.draws}`);
   set("dpr", `dpr     ${tel.dpr.toFixed(2)}`);

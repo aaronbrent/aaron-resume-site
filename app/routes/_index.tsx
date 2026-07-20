@@ -104,7 +104,10 @@ export default function Index() {
               <DropIn
                 onFrame={writeHud3d}
                 onReady={() => setRideReady(true)}
-                onFallback={() => demoteTier()}
+                onFallback={(reason) => {
+                  if (import.meta.env.DEV) console.warn("[rig3d] demoted:", reason);
+                  demoteTier();
+                }}
               />
             </Suspense>
           ) : null}

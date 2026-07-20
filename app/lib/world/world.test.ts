@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { line3d } from "../../content/line3d";
 import { contentAnchors } from "../line/anchors";
 import { buildLineLut, emptyLineLutSample, sampleLineLut } from "../line/lut3d";
+import { branchInfluence, deriveForkBranches } from "./junctions";
 import { createNoise2D } from "./noise";
 import { scatterTrees } from "./scatter";
 import { buildTerrain, createTerrainBuilder } from "./terrain";
+import { planTown } from "./town";
+import { waypoints } from "../../content/waypoints";
 
 const lut = buildLineLut(line3d.points, contentAnchors());
+const junctionAnchors = waypoints.map((w) => ({ id: w.id, t: w.t }));
 
 describe("the deterministic world (PLAN-3D §3)", () => {
   it("noise is seeded: same seed same field, different seed different field", () => {
@@ -55,6 +59,94 @@ describe("the deterministic world (PLAN-3D §3)", () => {
     const b = createTerrainBuilder(lut, line3d.seed, { cellM: 8 });
     b.fillRows(0, b.rows + 1);
     expect(a.positions).toEqual(b.positions);
+  });
+
+  it("the valley basin opens past the runout: floor drops, walls collapse", () => {
+    const terrain = buildTerrain(lut, line3d.seed, { cellM: 4 });
+    const end = sampleLineLut(lut, 1, emptyLineLutSample());
+    const endX = end.pos[0];
+    const endZ = end.pos[2];
+    const endY = end.pos[1];
+    // The floor settles well below base camp…
+    const floor = terrain.heightAt(endX, endZ + 300);
+    expect(floor).toBeLessThan(endY - 40);
+    // …and stays a basin across its width instead of climbing valley walls.
+    const flank = terrain.heightAt(endX - 90, endZ + 300);
+    expect(Math.abs(flank - floor)).toBeLessThan(25);
+    // Upslope of the runout the walls still stand.
+    const wall = terrain.heightAt(endX - 90, endZ - 200);
+    const runout = terrain.heightAt(endX, endZ - 200);
+    expect(wall - runout).toBeGreaterThan(30);
+  });
+
+  it("the town plan is deterministic, spaced, and sits in the basin ellipse", () => {
+    const end = sampleLineLut(lut, 1, emptyLineLutSample());
+    const center = { x: end.pos[0] + 16, z: end.pos[2] + 330 };
+    const a = planTown(line3d.seed, center);
+    const b = planTown(line3d.seed, center);
+    const terrain = createTerrainBuilder(lut, line3d.seed, { cellM: 4 });
+    const terrainEndZ = terrain.minZ + terrain.rows * terrain.cellM;
+    expect(a).toEqual(b);
+    expect(a.buildings.length).toBeGreaterThan(25);
+    expect(a.buildings.some((building) => building.kind === "tower")).toBe(true);
+    for (let i = 0; i < a.buildings.length; i++) {
+      const p = a.buildings[i]!;
+      expect(Math.abs(p.x - center.x)).toBeLessThan(130);
+      expect(Math.abs(p.z - center.z)).toBeLessThan(160);
+      // Include the rotated footprint, not just its center: heightAt clamps
+      // outside the grid, which would otherwise hide a floating chalet bug.
+      const halfDepthZ =
+        (Math.abs(Math.sin(p.yaw)) * p.w + Math.abs(Math.cos(p.yaw)) * p.d) / 2;
+      expect(p.z + halfDepthZ).toBeLessThanOrEqual(terrainEndZ);
+      for (let j = i + 1; j < a.buildings.length; j++) {
+        const q = a.buildings[j]!;
+        expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThan(4);
+      }
+    }
+  });
+
+  it("fork branches continue the approach heading past each junction", () => {
+    const branches = deriveForkBranches(lut, junctionAnchors);
+    expect(branches).toHaveLength(junctionAnchors.length);
+    const sample = emptyLineLutSample();
+    branches.forEach((b, i) => {
+      // Unit direction, descending, plausible length.
+      expect(Math.hypot(b.dirX, b.dirZ)).toBeCloseTo(1, 5);
+      expect(b.slope).toBeGreaterThanOrEqual(0);
+      expect(b.lengthM).toBeGreaterThan(40);
+      // The branch heads away from where the ridden line actually goes: by
+      // the anchor, the ride has peeled off the branch's centerline.
+      const s = sampleLineLut(lut, junctionAnchors[i]!.t, sample);
+      const px = s.pos[0] - b.x0;
+      const pz = s.pos[2] - b.z0;
+      const aside = Math.abs(px * b.dirZ - pz * b.dirX);
+      expect(aside).toBeGreaterThan(4);
+    });
+  });
+
+  it("branches carve groomed shelves the terrain otherwise walls off", () => {
+    const branches = deriveForkBranches(lut, junctionAnchors);
+    const carved = buildTerrain(lut, line3d.seed, { cellM: 4, branches });
+    const walled = buildTerrain(lut, line3d.seed, { cellM: 4 });
+    for (const b of branches) {
+      // Mid-branch, on the centerline: carved ground hugs the decoy profile.
+      const s = b.lengthM * 0.4;
+      const x = b.x0 + b.dirX * s;
+      const z = b.z0 + b.dirZ * s;
+      const target = b.y0 - b.slope * s - 0.4;
+      expect(Math.abs(carved.heightAt(x, z) - target)).toBeLessThan(2.5);
+      expect(carved.heightAt(x, z)).toBeLessThanOrEqual(walled.heightAt(x, z) + 0.5);
+    }
+  });
+
+  it("no tree stands on a junction decoy", () => {
+    const branches = deriveForkBranches(lut, junctionAnchors);
+    const trees = scatterTrees(lut, line3d.seed, { count: 900, branches });
+    for (const tree of trees) {
+      for (const b of branches) {
+        expect(branchInfluence(b, tree.x, tree.z, 5).weight).toBeLessThanOrEqual(0.05);
+      }
+    }
   });
 
   it("tree scatter is deterministic and clears the groomed corridor", () => {

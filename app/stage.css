@@ -155,6 +155,247 @@ html[data-tier="ride"][data-ride-ready="true"] [data-stage-2d] {
   }
 }
 
+/* Sign layer (PLAN-3D ADR-8): real DOM text projected onto the 3D trail
+   signs by the hand-rolled matrix3d sync (sign-layer.ts). The layer gets
+   `perspective` per frame from the camera's eased FOV; .sign-camera carries
+   the inverse view; each panel's transform is its static world matrix.
+   Inside a dwell zone the rig flips data-read and the card grows open —
+   the expandable trail sign. */
+.sign-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+html[data-ride-ready="true"] .sign-layer {
+  opacity: 1;
+}
+.sign-camera {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+/* The panel is the size of the 3D board (340×210 px ≙ 3.4×2.1 m); the card
+   hangs from the board's top edge and grows downward when it expands, so
+   the sign stays planted on its posts. */
+.sign-panel {
+  --sign-scale: 1;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 340px;
+  height: 210px;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+.sign-panel[data-near="false"] {
+  display: none;
+}
+.sign-card {
+  position: absolute;
+  inset: 0 0 auto 0;
+  box-sizing: border-box;
+  min-height: 210px;
+  border: 3px solid rgb(34 52 77 / 0.9);
+  background: #fbf7ee;
+  padding: 14px 16px;
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px rgb(34 52 77 / 0.25);
+  transform-origin: 50% 0%;
+  transform: scale(var(--sign-scale));
+  transition: transform 380ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.sign-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.sign-org {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.sign-meta {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--color-ink) 72%, transparent);
+}
+.sign-claim {
+  margin-top: 9px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.sign-more {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 360ms ease-out,
+    opacity 280ms ease-out;
+}
+.sign-panel[data-read="true"] .sign-more {
+  max-height: 360px;
+  opacity: 1;
+}
+.sign-more ul {
+  margin-top: 9px;
+  padding-left: 17px;
+  list-style: disc;
+  font-size: 12.5px;
+  line-height: 1.45;
+  display: grid;
+  gap: 5px;
+}
+.sign-why {
+  margin-top: 9px;
+  border-left: 3px solid var(--color-patrol);
+  padding-left: 9px;
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.45;
+}
+/* Narrow viewports (ADR-8): the world panels stay compact on the boards;
+   the magnetic read pose is a full-width sheet rising from the bottom edge —
+   the mobile layout IS the read pose, no separate design. */
+.sign-sheet {
+  display: none;
+}
+@media (max-width: 640px) {
+  .sign-panel .sign-card {
+    transform: none !important;
+  }
+  .sign-panel .sign-more {
+    max-height: 0 !important;
+    opacity: 0 !important;
+  }
+  .sign-sheet {
+    display: block;
+    position: absolute;
+    inset: auto 0 0 0;
+    pointer-events: none;
+  }
+  .sign-sheet-card {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 12px;
+    opacity: 0;
+    transform: translateY(105%);
+    transition:
+      transform 420ms cubic-bezier(0.23, 1, 0.32, 1),
+      opacity 300ms ease-out;
+  }
+  .sign-sheet-card[data-active="true"] {
+    opacity: 1;
+    transform: none;
+  }
+  .sign-sheet-card .sign-card {
+    position: static;
+    min-height: 0;
+    transform: none;
+    transition: none;
+  }
+  .sign-sheet-card .sign-more {
+    max-height: none;
+    opacity: 1;
+  }
+  .sign-sheet-card[data-closed] .sign-card {
+    border-color: var(--color-patrol);
+  }
+}
+
+/* The closed trail's sign wears patrol colors and a rope slash. */
+.sign-panel[data-closed] .sign-card {
+  border-color: var(--color-patrol);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-patrol) 45%, transparent);
+}
+.sign-panel[data-closed] .sign-kicker {
+  color: var(--color-patrol-deep);
+}
+.sign-rope {
+  width: 26px;
+  border-top: 3px solid var(--color-patrol);
+  transform: rotate(-14deg);
+}
+
+/* Tier 2 visibility swap (ADR-8): once the ride's signs carry the content,
+   the flow document goes visually quiet — but stays in the DOM at its scroll
+   heights for screen readers, find-in-page, anchors, and print. Screen only:
+   the printed page keeps the full document. */
+@media screen {
+  html[data-tier="ride"][data-ride-ready="true"] [data-waypoint],
+  html[data-tier="ride"][data-ride-ready="true"] [data-closed-trail-card] {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+}
+
+/* POV rider (PLAN-3D §5): board nose and mitten as painted DOM sprites. The
+   rig writes --pov-bank/--pov-yaw/--pov-crouch/--pov-exit every frame; CSS
+   composes them into transforms, so the layer costs zero canvas work. Sits
+   above the 3D canvas, below the document. */
+.pov-rider {
+  --pov-bank: 0deg;
+  --pov-yaw: 0deg;
+  --pov-crouch: 0;
+  --pov-exit: 1;
+  position: fixed;
+  inset: 0;
+  /* Above the canvas (DOM order), below the document layers: the rider never
+     covers the words (PLAN-3D risk #10 — the mountain serves the resume). */
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.pov-rider[data-ready="true"] {
+  opacity: var(--pov-exit, 1);
+}
+.pov-board {
+  position: absolute;
+  bottom: -3%;
+  left: 50%;
+  width: clamp(180px, 30vmin, 320px);
+  transform: translateX(-58%) translateY(calc(var(--pov-crouch) * -26px))
+    rotate(calc(var(--pov-bank) * -1 + var(--pov-yaw)));
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 6px 14px rgb(34 48 58 / 0.28));
+}
+.pov-arm {
+  position: absolute;
+  bottom: 14%;
+  left: -2%;
+  width: clamp(150px, 26vmin, 280px);
+  transform: translateY(calc(var(--pov-crouch) * 34px))
+    rotate(calc(8deg + var(--pov-bank) * 0.5));
+  transform-origin: 0% 100%;
+  filter: drop-shadow(0 5px 12px rgb(34 48 58 / 0.25));
+}
+@media (max-width: 640px) {
+  .pov-board {
+    width: clamp(150px, 44vw, 240px);
+  }
+  .pov-arm {
+    width: clamp(120px, 38vw, 200px);
+    bottom: 10%;
+  }
+}
+
 /* Full-viewport, client-mounted canvas. Its only paint work happens inside
    the rig's rAF; it neither receives input nor adds layout work. */
 .spray-canvas {

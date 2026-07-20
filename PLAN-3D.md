@@ -79,7 +79,9 @@
 
 ### ADR-9: Art direction — the map stands up
 
-**Decision.** v2 does not get a new aesthetic; it gets the _same one, extruded_. The register is still the printed USFS piste map — now you're standing on it:
+> **Amended 2026-07-11 — the anime golden hour.** The owner redirected the art direction from "the printed map, extruded" to an anime-key alpine golden hour (reference: Cortina d'Ampezzo/alpenglow key art): gradient sky dome with painted cumulus and a low sun, three haze-layered far ranges plus a world-anchored hero massif, warm-lit/blue-shadow snow with sienna rock, snow-dusted spruce, a procedural ski town in a valley basin below base camp, and a POV board-nose + mitten overlay. Everything below this note is superseded where it conflicts; what survives unchanged: **authored in code** (one exception: two small painted sprites for the rider's own body, `public/art/pov-*.webp`, 44 kB), the contour-line shader (whispered into the snow shadows now), fog-as-distance (haze, not paper), and every performance/a11y budget. The shared palette + sun direction live in `app/lib/rig3d/palette.ts`.
+
+**Decision (original).** v2 does not get a new aesthetic; it gets the _same one, extruded_. The register is still the printed USFS piste map — now you're standing on it:
 
 - **Terrain:** low-poly flat-shaded heightfield, vertex-colored in the v1 palette — `powder` snowfields, `ink` rock faces, `evergreen` treeline bands.
 - **The signature shader:** terrain fragments draw **elevation contour lines** (`fwidth`-based, in `ink`, heavier index contours) — the mountain is literally rendered as its own topographic map. This is v2's artifact signature, the analog of v1's paper frame, and it costs one shader, not an art team.
@@ -263,18 +265,19 @@ Each phase ends demoable and deployed to a preview. **Tier 1 e2e stays green in 
 
 ### Phase C — The signs (days 9–13) ✅ = the content rides the mountain
 
-- [ ] Sign geometry (posts/panel/difficulty plaque/trail name) per waypoint from `waypoints.ts`
-- [ ] DOM sign layer: matrix3d sync (hand-rolled), panels rendered from the same content data
-- [ ] Magnetic read: approach → clamp → release; mobile clamped rect = the card layout
-- [ ] Dwell speed profile tuned per waypoint; validator's ≥ 3.5 s read gate enforced
-- [ ] Flow-document visibility swap for Tier 2 + SR pass (NVDA/VoiceOver: reads like v1) + find-in-page/anchor e2e for both tiers
-- [ ] Closed trail roped off in-world beside the line
-- **Exit:** a non-engineer on a phone reads all four waypoints without instructions and can quote the SoFi claim back; axe = 0 both tiers.
+- [x] Sign geometry per waypoint + closed trail (timber posts/board/snow cap, three instanced draws, `rig3d/signs.ts`); each career bench is entered by a **junction turn** off the fall line, with the untaken decoy trail carved into the heightfield (`world/junctions.ts`)
+- [x] DOM sign layer: matrix3d sync (hand-rolled, `rig3d/sign-layer.ts`), panels rendered from the same content data; panel world transforms static, only the camera element moves per frame
+- [x] Magnetic read: dwell zone (asymmetric — deep links park ~0.028 past the anchor) expands the card and grows it to a readable on-screen size for the current distance, world-anchored and tilted; mobile presents a full-width bottom sheet
+- [x] Dwell speed profile tuned per waypoint; validator's ≥ 3.5 s read gate enforced (4.1–7.1 s)
+- [x] Flow-document visibility swap for Tier 2 (screen only; SR/anchors/print keep the document) + anchor e2e both tiers; axe = 0 with the new layers
+- [~] Closed trail: patrol-styled sign with rope slash in-world (full rope-line geometry still open)
+- **Exit (still owed):** a non-engineer on a phone reads all four waypoints without instructions — hallway test needs a human.
 
 ### Phase D — Sensation (days 14–17) ✅ = it feels like riding, and nobody feels sick
 
-- [ ] Camera dynamics (bank/crouch/FOV/look-ahead) from LUT signals, comfort caps enforced
-- [ ] Board nose + GPU spray + speed streaks; hockey-stop wall at Base Camp
+- [x] Camera dynamics (bank/crouch/FOV/look-ahead) from LUT signals (`rig3d/dynamics.ts`), comfort caps enforced and unit-tested across the authored line
+- [x] Board nose + mitten POV overlay (painted sprites, CSS-variable driven — banks, yaws, crouches with the eased camera pose; steps out of frame over the town)
+- [ ] GPU spray + speed streaks; hockey-stop wall at Base Camp
 - [ ] Reverse-scroll treatment (hysteresis + look-back), bfcache/restoration/resize/toolbar passes on real iPhone
 - [ ] Adaptive DPR controller + cut ladder verified by forcing throttle
 - [ ] **Motion-sensitive hallway test** (≥ 3 people, one who gets carsick) — pass required
