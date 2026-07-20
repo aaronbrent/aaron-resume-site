@@ -29,6 +29,10 @@ export interface TerrainData {
   indices: Uint32Array;
   cols: number;
   rows: number;
+  /** Per-vertex groomed-corridor weight ∈ [0,1] — the corduroy mask. */
+  corridor: Float32Array;
+  /** Per-vertex signed lateral meters off the groomed centerline. */
+  across: Float32Array;
 }
 
 export interface TerrainBuilder extends TerrainData {
@@ -83,6 +87,7 @@ export function createTerrainBuilder(
   const valleyMouth = opts.valleyMouthM ?? 300;
   const branches = opts.branches ?? [];
   const noise = createNoise2D(seed);
+  const ridgeNoise = createNoise2D(seed ^ 0x77e11);
 
   let minX = Infinity;
   let maxX = -Infinity;
@@ -103,6 +108,8 @@ export function createTerrainBuilder(
   const cols = Math.ceil((maxX - minX) / cell);
   const rows = Math.ceil((maxZ - minZ) / cell);
   const positions = new Float32Array((cols + 1) * (rows + 1) * 3);
+  const corridorMask = new Float32Array((cols + 1) * (rows + 1));
+  const acrossM = new Float32Array((cols + 1) * (rows + 1));
 
   const indices = new Uint32Array(cols * rows * 6);
   let k = 0;
@@ -151,13 +158,24 @@ export function createTerrainBuilder(
         // so the corridor spills forward into the basin.
         const dist = z > lineEndZ ? Math.abs(x - endLineX) : Math.sqrt(bestD2);
         const lineY = lut.pos[bestI * 3 + 1]!;
+        // Signed lateral offset from the centerline (left/right of travel)
+        // — the corduroy stripe phase for the shader.
+        const tx = lut.tan[bestI * 3]!;
+        const tz = lut.tan[bestI * 3 + 2]!;
+        let across =
+          z > lineEndZ
+            ? x - endLineX
+            : (x - lut.pos[bestI * 3]!) * tz - (z - lut.pos[bestI * 3 + 2]!) * tx;
         // Dwell benches groom a wider apron: where the profile slows for a
         // sign, the flat corridor widens so the sign stands on groomed snow.
         const apron = corridor + 8 * (1 - smoothstep(0.25, 0.8, lut.speed[bestI]!));
         // Valley walls: gentle rise away from the run, capped so far ridges
-        // stay believable; relief fades out inside the corridor.
+        // stay believable; relief fades out inside the corridor. Ridged spurs
+        // (Phase G2) buttress the walls, growing with distance from the run.
         const wall = Math.min(90, (dist / 45) ** 1.7 * 20);
-        const relief = fbm(noise, x * 0.011, z * 0.011, 3) * 14;
+        const relief = fbm(noise, x * 0.011, z * 0.011, 4) * 16;
+        const ridged = 1 - Math.abs(fbm(ridgeNoise, x * 0.0042, z * 0.0042, 3));
+        const spur = ridged * ridged * Math.min(1, dist / 150) * 30;
         const outside = smoothstep(apron, apron + shoulder, dist);
         // The valley mouth: past the run's end the walls collapse and the
         // ground falls away into the town basin. The drop is concave —
@@ -171,16 +189,30 @@ export function createTerrainBuilder(
           lineY -
           0.4 -
           drop +
-          outside * (wall * (1 - open) + relief * (1 - 0.6 * open) + 0.4);
-        // Junction decoys: cut each untaken trail's shelf into the hillside.
+          outside * ((wall + spur) * (1 - open) + relief * (1 - 0.6 * open) + 0.4);
+        // The corduroy mask: full strength on the groomed flat, gone at the
+        // shoulder's start.
+        let groom = 1 - smoothstep(apron + 1, apron + 5, dist);
+        // Junction decoys: cut each untaken trail's shelf into the hillside;
+        // they're groomed too, striped along their own centerline.
         for (const branch of branches) {
           const cut = branchInfluence(branch, x, z);
           if (cut.weight > 0) y += (cut.y - y) * cut.weight;
+          const branchGroom = smoothstep(0.55, 0.95, cut.weight);
+          if (branchGroom > groom) {
+            groom = branchGroom;
+            const px = x - branch.x0;
+            const pz = z - branch.z0;
+            across = px * branch.dirZ - pz * branch.dirX;
+          }
         }
-        const idx = (r * (cols + 1) + c) * 3;
+        const vi = r * (cols + 1) + c;
+        const idx = vi * 3;
         positions[idx] = x;
         positions[idx + 1] = y;
         positions[idx + 2] = z;
+        corridorMask[vi] = groom;
+        acrossM[vi] = across;
       }
     }
   }
@@ -198,7 +230,19 @@ export function createTerrainBuilder(
     return top + tz * (bottom - top);
   }
 
-  return { positions, indices, cols, rows, fillRows, heightAt, minX, minZ, cellM: cell };
+  return {
+    positions,
+    indices,
+    cols,
+    rows,
+    corridor: corridorMask,
+    across: acrossM,
+    fillRows,
+    heightAt,
+    minX,
+    minZ,
+    cellM: cell,
+  };
 }
 
 /** One-shot build — tests and any future build-time serialization. */

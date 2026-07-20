@@ -4,6 +4,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
+  DoubleSide,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -16,15 +17,17 @@ import {
 import { ANIME, SUN_DIR } from "./palette";
 
 /**
- * The sky (PLAN-3D ADR-9, amended): a gradient dome, a low sun, and painterly
- * cumulus billboards — the anime-key vault the whole run rides under. The
- * group follows the camera's position (never rotation) like the far ridges,
- * so it is infinitely-far scenery for four draw calls: dome, sun, and two
- * merged cloud batches.
+ * The sky (PLAN-3D ADR-9, amended; clouds upgraded in Phase G4): a gradient
+ * dome, a low sun, four unique painted cumulus, and a cirrus veil — the
+ * anime-key vault the whole run rides under. The group follows the camera's
+ * position (never rotation) like the far ridges, so it is infinitely-far
+ * scenery, and the cloud shells **drift with scroll**: a few degrees of slow
+ * azimuthal slide across the descent, so the sky is alive while the ride
+ * moves and perfectly still — costing zero frames — while the page parks.
  *
- * The clouds are painted at init onto two small canvases (stacked radial
- * gradients: cream bodies, salmon underlight, a bright top rim) — authored
- * code, not fetched art, and deterministic from the content seed.
+ * Every cloud is painted at init onto its own small canvas (lobed
+ * cauliflower silhouettes over a flat base, salmon underlight, a bright top
+ * rim) — authored code, not fetched art, deterministic from the content seed.
  */
 
 const DOME_RADIUS_M = 3600;
@@ -35,6 +38,8 @@ export interface Sky {
   group: Group;
   /** Everything with a dispose(): geometries, materials, textures. */
   resources: Array<{ dispose(): void }>;
+  /** Scroll-linked drift: call with ride time t each frame. */
+  drift(t: number): void;
 }
 
 function mulberry32(seed: number) {
@@ -78,56 +83,88 @@ const domeFragment = /* glsl */ `
   }
 `;
 
-/** Paint one cumulus onto a canvas: silhouette, underlight, top rim. */
-function paintCloud(rand: () => number, wide: boolean): HTMLCanvasElement {
-  const w = 256;
-  const h = wide ? 128 : 176;
+interface CloudProfile {
+  w: number;
+  h: number;
+  /** Major lobes across the crown. */
+  lobes: number;
+  /** Crown height as a fraction of the canvas. */
+  arch: number;
+}
+
+/** Four silhouettes: towering, classic, long deck, small puff. */
+const CLOUD_PROFILES: CloudProfile[] = [
+  { w: 256, h: 190, lobes: 5, arch: 0.52 },
+  { w: 256, h: 150, lobes: 6, arch: 0.38 },
+  { w: 256, h: 110, lobes: 8, arch: 0.22 },
+  { w: 192, h: 120, lobes: 4, arch: 0.3 },
+];
+
+/** Paint one cumulus: lobed silhouette, flat base, underlight, top rim. */
+function paintCloud(rand: () => number, profile: CloudProfile): HTMLCanvasElement {
+  const { w, h, lobes, arch } = profile;
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
   const lit = `#${ANIME.cloudLit.getHexString()}`;
-  const shade = ANIME.cloudShade;
+  const baseY = h * 0.8;
 
-  // Cauliflower cluster: many small puffs over a few anchors, taller in the
-  // middle, tapered at the ends — the crisp lobed silhouette, not a blur.
+  // The crown: a few major lobes, each a cluster of crisp puffs; taller in
+  // the middle, tapered at the ends — cauliflower, not blur. Generous body
+  // fill below the crown keeps the mass reading as one cloud, never beads.
   const puffs: Array<{ x: number; y: number; r: number }> = [];
-  const count = wide ? 16 : 13;
-  for (let i = 0; i < count; i++) {
-    const f = i / (count - 1);
-    const arch = Math.sin(f * Math.PI) ** 0.8;
+  for (let i = 0; i < lobes; i++) {
+    const f = lobes === 1 ? 0.5 : i / (lobes - 1);
+    const archF = Math.sin(f * Math.PI) ** 0.75;
+    const cx = w * (0.12 + 0.76 * f + (rand() - 0.5) * 0.05);
+    const top = baseY - h * arch * archF * (0.7 + rand() * 0.3);
+    const lobeR = w * (0.07 + rand() * 0.04) * (0.72 + archF * 0.45);
+    // Each lobe: a main puff, tucked shoulders, and a broad body below.
+    puffs.push({ x: cx, y: top + lobeR * 0.4, r: lobeR });
     puffs.push({
-      x: w * (0.1 + 0.8 * f + (rand() - 0.5) * 0.04),
-      y: h * (0.78 - arch * (wide ? 0.26 : 0.42) * (0.55 + rand() * 0.45)),
-      r: (wide ? 13 : 15) + arch * (wide ? 14 : 19) + rand() * 6,
+      x: cx - lobeR * (0.5 + rand() * 0.2),
+      y: top + lobeR * (0.75 + rand() * 0.25),
+      r: lobeR * (0.68 + rand() * 0.22),
     });
-    // Filler row: keeps the body solid between the crown and the flat base.
-    if (i > 0 && i < count - 1) {
+    puffs.push({
+      x: cx + lobeR * (0.5 + rand() * 0.2),
+      y: top + lobeR * (0.75 + rand() * 0.25),
+      r: lobeR * (0.68 + rand() * 0.22),
+    });
+    puffs.push({
+      x: cx + (rand() - 0.5) * lobeR * 0.8,
+      y: (top + baseY) / 2 + rand() * lobeR * 0.3,
+      r: lobeR * (1.15 + rand() * 0.35),
+    });
+    // Bridge to the neighboring lobe so crowns never separate into beads.
+    if (i > 0) {
+      const pf = (i - 0.5) / (lobes - 1);
       puffs.push({
-        x: w * (0.12 + 0.76 * f + (rand() - 0.5) * 0.06),
-        y: h * (0.74 - arch * 0.1),
-        r: (wide ? 14 : 16) + arch * 10 + rand() * 5,
+        x: w * (0.12 + 0.76 * pf),
+        y: baseY - h * arch * Math.sin(pf * Math.PI) ** 0.75 * 0.45 - lobeR * 0.2,
+        r: lobeR * (0.95 + rand() * 0.3),
       });
     }
   }
-  // A flat base bar keeps the underside level like real cumulus.
   for (const p of puffs) {
-    const g = ctx.createRadialGradient(p.x, p.y, p.r * 0.55, p.x, p.y, p.r);
+    const g = ctx.createRadialGradient(p.x, p.y, p.r * 0.6, p.x, p.y, p.r);
     g.addColorStop(0, lit);
-    g.addColorStop(0.88, lit);
+    g.addColorStop(0.9, lit);
     g.addColorStop(1, `${lit}00`);
     ctx.fillStyle = g;
     ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
   }
+  // A flat base bar keeps the underside level like real cumulus.
   ctx.fillStyle = lit;
-  ctx.fillRect(w * 0.16, h * 0.74, w * 0.68, h * 0.06);
+  ctx.fillRect(w * 0.14, baseY - h * 0.05, w * 0.72, h * 0.05);
   // Sunset underlight: salmon pooled along the flat base.
   ctx.globalCompositeOperation = "source-atop";
-  const s = `#${shade.getHexString()}`;
-  const under = ctx.createLinearGradient(0, h * 0.4, 0, h * 0.84);
+  const s = `#${ANIME.cloudShade.getHexString()}`;
+  const under = ctx.createLinearGradient(0, baseY - h * 0.42, 0, baseY);
   under.addColorStop(0, `${s}00`);
-  under.addColorStop(0.75, `${s}66`);
-  under.addColorStop(1, `${s}cc`);
+  under.addColorStop(0.72, `${s}5e`);
+  under.addColorStop(1, `${s}c8`);
   ctx.fillStyle = under;
   ctx.fillRect(0, 0, w, h);
   // Rim light from above.
@@ -137,6 +174,29 @@ function paintCloud(rand: () => number, wide: boolean): HTMLCanvasElement {
   ctx.fillStyle = rim;
   ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = "source-over";
+  return canvas;
+}
+
+/** The cirrus veil: long combed streaks, painted once, stretched huge. */
+function paintCirrus(rand: () => number): HTMLCanvasElement {
+  const w = 256;
+  const h = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  for (let i = 0; i < 9; i++) {
+    const y = h * (0.15 + rand() * 0.7);
+    const len = w * (0.3 + rand() * 0.6);
+    const x0 = rand() * (w - len);
+    const streak = ctx.createLinearGradient(x0, 0, x0 + len, 0);
+    const alpha = 0.1 + rand() * 0.16;
+    streak.addColorStop(0, "rgba(253,239,225,0)");
+    streak.addColorStop(0.5, `rgba(253,239,225,${alpha.toFixed(3)})`);
+    streak.addColorStop(1, "rgba(253,239,225,0)");
+    ctx.fillStyle = streak;
+    ctx.fillRect(x0, y, len, 1.2 + rand() * 2.2);
+  }
   return canvas;
 }
 
@@ -261,41 +321,117 @@ export function createSky(seed: number): Sky {
     group.add(sun);
   }
 
-  // Two painted cloud variants, billboarded on the shell. The big stack sits
-  // near the sun's azimuth (the reference frame's lit cumulus); smaller and
-  // hazier ones ring the horizon.
+  // Four unique painted cumulus, billboarded on the shell — the towering
+  // stack near the sun's azimuth (the reference frame's lit cumulus), decks
+  // and puffs ringing the horizon, no texture repeated side by side.
   const sunAz = Math.atan2(SUN_DIR.x, SUN_DIR.z);
-  const tall = new CanvasTexture(paintCloud(rand, false));
-  const wide = new CanvasTexture(paintCloud(rand, true));
-  tall.colorSpace = SRGBColorSpace;
-  wide.colorSpace = SRGBColorSpace;
-  resources.push(tall, wide);
-  const tallPlacements = [
-    { az: sunAz + 0.12, el: 0.3, w: 1150, hazeMix: 0 },
-    { az: sunAz - 0.62, el: 0.2, w: 800, hazeMix: 0.12 },
-    { az: sunAz + 0.9, el: 0.26, w: 880, hazeMix: 0.1 },
-    { az: sunAz - 1.7, el: 0.38, w: 780, hazeMix: 0.05 },
-    { az: sunAz + 2.4, el: 0.34, w: 850, hazeMix: 0.1 },
+  const textures = CLOUD_PROFILES.map((profile) => {
+    const texture = new CanvasTexture(paintCloud(rand, profile));
+    texture.colorSpace = SRGBColorSpace;
+    resources.push(texture);
+    return texture;
+  });
+  const placementsByProfile: Array<
+    Array<{ az: number; el: number; w: number; hazeMix: number }>
+  > = [
+    // Towering: the hero stack by the sun, one echo far around.
+    [
+      { az: sunAz + 0.14, el: 0.3, w: 1150, hazeMix: 0 },
+      { az: sunAz - 1.7, el: 0.36, w: 820, hazeMix: 0.08 },
+    ],
+    // Classic cumulus at mid elevations.
+    [
+      { az: sunAz - 0.62, el: 0.21, w: 820, hazeMix: 0.12 },
+      { az: sunAz + 0.92, el: 0.26, w: 880, hazeMix: 0.1 },
+      { az: sunAz + 2.4, el: 0.33, w: 850, hazeMix: 0.1 },
+      { az: sunAz - 0.16, el: 0.5, w: 900, hazeMix: 0 },
+    ],
+    // Long decks hugging the horizon haze.
+    [
+      { az: sunAz - 1.15, el: 0.09, w: 1150, hazeMix: 0.35 },
+      { az: sunAz + 1.5, el: 0.08, w: 1250, hazeMix: 0.4 },
+      { az: sunAz - 2.3, el: 0.11, w: 1050, hazeMix: 0.45 },
+      { az: sunAz + 2.95, el: 0.15, w: 980, hazeMix: 0.4 },
+    ],
+    // Small puffs scattered between.
+    [
+      { az: sunAz + 0.45, el: 0.14, w: 560, hazeMix: 0.28 },
+      { az: sunAz - 1.05, el: 0.42, w: 520, hazeMix: 0.05 },
+      { az: sunAz + 1.9, el: 0.18, w: 600, hazeMix: 0.3 },
+    ],
   ];
-  const widePlacements = [
-    { az: sunAz - 1.15, el: 0.09, w: 1100, hazeMix: 0.35 },
-    { az: sunAz + 1.5, el: 0.08, w: 1200, hazeMix: 0.4 },
-    { az: sunAz + 0.42, el: 0.12, w: 800, hazeMix: 0.3 },
-    { az: sunAz - 2.3, el: 0.11, w: 1050, hazeMix: 0.45 },
-    { az: sunAz + 2.95, el: 0.15, w: 950, hazeMix: 0.4 },
-    { az: sunAz - 0.18, el: 0.5, w: 900, hazeMix: 0 },
-  ];
-  const tallBatch = cloudBatch(tallPlacements, tall, 256 / 176);
-  const wideBatch = cloudBatch(widePlacements, wide, 256 / 128);
-  tallBatch.mesh.renderOrder = -8;
-  wideBatch.mesh.renderOrder = -8;
-  resources.push(
-    tallBatch.geometry,
-    tallBatch.material,
-    wideBatch.geometry,
-    wideBatch.material,
-  );
-  group.add(tallBatch.mesh, wideBatch.mesh);
+  const cloudMeshes: Mesh[] = [];
+  placementsByProfile.forEach((placements, i) => {
+    const profile = CLOUD_PROFILES[i]!;
+    const batch = cloudBatch(placements, textures[i]!, profile.w / profile.h);
+    batch.mesh.renderOrder = -8;
+    resources.push(batch.geometry, batch.material);
+    cloudMeshes.push(batch.mesh);
+    group.add(batch.mesh);
+  });
 
-  return { group, resources };
+  // The cirrus veil: two flat combed sheets hanging high overhead, seen at
+  // the glancing angle real cirrus is — never tilted toward the camera.
+  const cirrusTexture = new CanvasTexture(paintCirrus(rand));
+  cirrusTexture.colorSpace = SRGBColorSpace;
+  resources.push(cirrusTexture);
+  const cirrusGroup = new Group();
+  {
+    // Both sheets baked into one geometry: one draw for the whole veil.
+    const merged = new BufferGeometry();
+    const sheets = [
+      { az: sunAz - 0.4, dist: 1500, y: 1750, spin: 0.5 },
+      { az: sunAz + 1.9, dist: 1900, y: 2050, spin: -0.9 },
+    ];
+    const positions = new Float32Array(sheets.length * 4 * 3);
+    const uvs = new Float32Array(sheets.length * 4 * 2);
+    const indices = new Uint16Array(sheets.length * 6);
+    sheets.forEach((sheet, i) => {
+      const cx = Math.sin(sheet.az) * sheet.dist;
+      const cz = Math.cos(sheet.az) * sheet.dist;
+      const cos = Math.cos(sheet.spin);
+      const sin = Math.sin(sheet.spin);
+      for (let v = 0; v < 4; v++) {
+        const lx = (v % 2 === 0 ? -1 : 1) * 1300;
+        const lz = (v < 2 ? -1 : 1) * 450;
+        const o = (i * 4 + v) * 3;
+        positions[o] = cx + lx * cos - lz * sin;
+        positions[o + 1] = sheet.y;
+        positions[o + 2] = cz + lx * sin + lz * cos;
+        uvs[(i * 4 + v) * 2] = v % 2;
+        uvs[(i * 4 + v) * 2 + 1] = v < 2 ? 0 : 1;
+      }
+      const b = i * 4;
+      indices.set([b, b + 1, b + 2, b + 1, b + 3, b + 2], i * 6);
+    });
+    merged.setAttribute("position", new BufferAttribute(positions, 3));
+    merged.setAttribute("uv", new BufferAttribute(uvs, 2));
+    merged.setIndex(new BufferAttribute(indices, 1));
+    const sheetMaterial = new MeshBasicMaterial({
+      map: cirrusTexture,
+      transparent: true,
+      depthWrite: false,
+      fog: false,
+      opacity: 0.8,
+      side: DoubleSide,
+    });
+    resources.push(merged, sheetMaterial);
+    const veil = new Mesh(merged, sheetMaterial);
+    veil.renderOrder = -9;
+    veil.frustumCulled = false;
+    cirrusGroup.add(veil);
+    group.add(cirrusGroup);
+  }
+
+  // Scroll-linked drift: each layer slides its own amount, cirrus slowest —
+  // a parallax of winds, driven only while the ride moves.
+  const drift = (t: number) => {
+    cloudMeshes[0]!.rotation.y = t * 0.05;
+    cloudMeshes[1]!.rotation.y = t * -0.036;
+    cloudMeshes[2]!.rotation.y = t * 0.024;
+    cloudMeshes[3]!.rotation.y = t * -0.06;
+    cirrusGroup.rotation.y = t * 0.014;
+  };
+
+  return { group, resources, drift };
 }

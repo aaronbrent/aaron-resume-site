@@ -36,8 +36,11 @@ export const ANIME = {
   // Treeline: cold spruce with snow dust on the crowns.
   spruce: new Color("#20514a"),
   spruceShade: new Color("#1d3b58"),
+  spruceLit: new Color("#4a7a58"),
   snowDust: new Color("#eaf1fc"),
   trunk: new Color("#41332a"),
+  // Snowy woods seen from across the valley — the ground under the groves.
+  forestFloor: new Color("#43616b"),
   // Far-range paint, nearest ring to farthest.
   rangeSnow: new Color("#eef2fc"),
   rangeRock: new Color("#7c8cc0"),
@@ -45,4 +48,13 @@ export const ANIME = {
   // Steel and wood for furniture (lift towers, sign posts).
   steel: new Color("#5d6a7e"),
   wood: new Color("#7a5638"),
+  // Run dressing: bamboo edge markers with patrol-orange tips.
+  bamboo: new Color("#c9a15e"),
+  patrol: new Color("#e8642c"),
+  // The village at dusk: plaster facades among the timber, masonry
+  // chimneys, and the warm glow of windows and streetlamps coming on.
+  plaster: new Color("#e6dcc6"),
+  masonry: new Color("#6b6157"),
+  lampGlow: new Color("#ffc274"),
+  smoke: new Color("#cdd3de"),
 } as const;

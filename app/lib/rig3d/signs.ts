@@ -1,6 +1,9 @@
 import {
   BoxGeometry,
+  BufferAttribute,
+  BufferGeometry,
   Color,
+  ConeGeometry,
   Group,
   InstancedMesh,
   Matrix4,
@@ -11,14 +14,20 @@ import {
 import { closedTrail } from "~/content/closed-trail";
 import { waypoints } from "~/content/waypoints";
 import { emptyLineLutSample, sampleLineLut, type LineLut } from "~/lib/line/lut3d";
-import { advanceByMeters } from "~/lib/world/junctions";
+import { advanceByMeters, type ForkBranch } from "~/lib/world/junctions";
+import { mergeColoredParts } from "./merge";
 import { ANIME } from "./palette";
 
 /**
- * Resort trail signs (PLAN-3D ADR-8, Phase C): full-size furniture at every
- * career junction and at the closed trail — two timber posts, a navy board,
- * snow on the header — standing on the groomed bench at the waypoint's side
- * of the fork, canted to face the arriving rider. Three instanced draws.
+ * Resort trail signs (PLAN-3D ADR-8, Phase C; furniture upgraded in Phase
+ * G3): full-size furniture at every career junction and at the closed trail
+ * — two timber posts, cross-braces, a navy board under a snow-capped gable
+ * roof, and drifted snow mounds at the post feet — standing on the groomed
+ * bench at the waypoint's side of the fork, canted to face the arriving
+ * rider. Junction decoys get a smaller single-post wayfinding board so the
+ * untaken trail reads as a real choice. The whole kit bakes into one
+ * vertex-colored geometry per variant (merge.ts), so signage costs two
+ * instanced draws total.
  *
  * The words never live in the geometry: each board exports a placement the
  * DOM sign layer projects real text onto (signs-layer.ts), so the content
@@ -30,6 +39,7 @@ export const SIGN_BOARD_H_M = 2.1;
 /** Board center height above the bench snow. */
 const BOARD_CENTER_Y_M = 2.6;
 const STANDOFF_M = 7;
+const BOARD_NAVY = new Color("#22344d");
 
 export interface SignPlacement {
   id: string;
@@ -52,24 +62,76 @@ const signContent = [
   { id: closedTrail.id, t: closedTrail.t, side: "left" as const },
 ];
 
-export function createSigns(lut: LineLut): Signs {
+/** Unit gable prism: eaves at y=0, ridge at y=1, ridge running along z. */
+function gableGeometry(): BufferGeometry {
+  // prettier-ignore
+  const tris = [
+    -0.5, 0, -0.5,  0.5, 0, -0.5,  0, 1, -0.5,
+    0.5, 0, 0.5,  -0.5, 0, 0.5,  0, 1, 0.5,
+    -0.5, 0, -0.5,  0, 1, -0.5,  0, 1, 0.5,
+    -0.5, 0, -0.5,  0, 1, 0.5,  -0.5, 0, 0.5,
+    0.5, 0, -0.5,  0.5, 0, 0.5,  0, 1, 0.5,
+    0.5, 0, -0.5,  0, 1, 0.5,  0, 1, -0.5,
+  ];
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new BufferAttribute(new Float32Array(tris), 3));
+  return geometry;
+}
+
+/** The full trail-sign kit in its local frame: origin at ground center. */
+function signKitGeometry(): BufferGeometry {
+  const parts: Array<{ geometry: BufferGeometry; color: Color }> = [];
+  const spread = SIGN_BOARD_W_M / 2 - 0.35;
+  for (const side of [-1, 1] as const) {
+    const post = new BoxGeometry(0.2, 3.5, 0.2);
+    post.translate(side * spread, 1.75, 0);
+    parts.push({ geometry: post, color: ANIME.wood });
+    const brace = new BoxGeometry(0.09, 1.35, 0.09);
+    brace.rotateZ(side * 0.52);
+    brace.translate(side * spread * 0.65, 0.85, 0);
+    parts.push({ geometry: brace, color: ANIME.wood });
+    const mound = new ConeGeometry(1.0, 0.46, 7);
+    mound.scale(side < 0 ? 1.0 : 1.3, 1, side < 0 ? 1.15 : 0.9);
+    mound.translate(side * spread, 0.12, 0);
+    parts.push({ geometry: mound, color: ANIME.snowDust });
+  }
+  const board = new BoxGeometry(SIGN_BOARD_W_M, SIGN_BOARD_H_M, 0.12);
+  board.translate(0, BOARD_CENTER_Y_M, 0);
+  parts.push({ geometry: board, color: BOARD_NAVY });
+  const roof = gableGeometry();
+  roof.scale(SIGN_BOARD_W_M + 0.42, 0.4, 0.56);
+  roof.translate(0, BOARD_CENTER_Y_M + SIGN_BOARD_H_M / 2 + 0.02, 0);
+  parts.push({ geometry: roof, color: ANIME.snowDust });
+  return mergeColoredParts(parts);
+}
+
+/** The decoy wayfinding kit: one short post, a small board, a snow cap. */
+function decoyKitGeometry(): BufferGeometry {
+  const parts: Array<{ geometry: BufferGeometry; color: Color }> = [];
+  const post = new BoxGeometry(0.2, 3.5, 0.2);
+  post.translate(0, 1.75, 0);
+  post.scale(0.8, 0.62, 0.8);
+  parts.push({ geometry: post, color: ANIME.wood });
+  const board = new BoxGeometry(SIGN_BOARD_W_M, SIGN_BOARD_H_M, 0.12);
+  board.scale(0.42, 0.34, 1);
+  board.translate(0, 1.62, 0);
+  parts.push({ geometry: board, color: BOARD_NAVY });
+  const roof = gableGeometry();
+  roof.scale(SIGN_BOARD_W_M * 0.42 + 0.3, 0.24, 0.42);
+  roof.translate(0, 1.62 + (SIGN_BOARD_H_M * 0.34) / 2 + 0.02, 0);
+  parts.push({ geometry: roof, color: ANIME.snowDust });
+  return mergeColoredParts(parts);
+}
+
+export function createSigns(lut: LineLut, branches: readonly ForkBranch[] = []): Signs {
   const group = new Group();
   const resources: Array<{ dispose(): void }> = [];
   const placements: SignPlacement[] = [];
 
-  const postGeometry = new BoxGeometry(0.2, 3.5, 0.2);
-  postGeometry.translate(0, 1.75, 0);
-  const boardGeometry = new BoxGeometry(SIGN_BOARD_W_M, SIGN_BOARD_H_M, 0.12);
-  const capGeometry = new BoxGeometry(SIGN_BOARD_W_M + 0.24, 0.14, 0.3);
-  const postMaterial = new MeshBasicMaterial({ color: ANIME.wood });
-  const boardMaterial = new MeshBasicMaterial({ color: new Color("#22344d") });
-  const capMaterial = new MeshBasicMaterial({ color: ANIME.snowDust });
-  resources.push(postGeometry, boardGeometry, capGeometry);
-  resources.push(postMaterial, boardMaterial, capMaterial);
-
-  const posts = new InstancedMesh(postGeometry, postMaterial, signContent.length * 2);
-  const boards = new InstancedMesh(boardGeometry, boardMaterial, signContent.length);
-  const caps = new InstancedMesh(capGeometry, capMaterial, signContent.length);
+  const material = new MeshBasicMaterial({ vertexColors: true });
+  const kitGeometry = signKitGeometry();
+  resources.push(material, kitGeometry);
+  const kits = new InstancedMesh(kitGeometry, material, signContent.length);
 
   const sample = emptyLineLutSample();
   const m = new Matrix4();
@@ -95,20 +157,9 @@ export function createSigns(lut: LineLut): Signs {
     // Face back up the approach, canted a touch toward the trail.
     const yaw = Math.atan2(-s.tan[0], -s.tan[2]) - sideSign * 0.16;
     q.setFromAxisAngle(up, yaw);
-
-    const spread = SIGN_BOARD_W_M / 2 - 0.35;
-    for (let p = 0; p < 2; p++) {
-      const d = p === 0 ? -spread : spread;
-      pos.set(x + Math.cos(yaw) * d, ground, z - Math.sin(yaw) * d);
-      m.compose(pos, q, unit);
-      posts.setMatrixAt(i * 2 + p, m);
-    }
-    pos.set(x, ground + BOARD_CENTER_Y_M, z);
+    pos.set(x, ground, z);
     m.compose(pos, q, unit);
-    boards.setMatrixAt(i, m);
-    pos.set(x, ground + BOARD_CENTER_Y_M + SIGN_BOARD_H_M / 2 + 0.07, z);
-    m.compose(pos, q, unit);
-    caps.setMatrixAt(i, m);
+    kits.setMatrixAt(i, m);
 
     // The DOM panel floats just off the board's front face.
     const fx = Math.sin(yaw);
@@ -120,10 +171,31 @@ export function createSigns(lut: LineLut): Signs {
       yaw,
     });
   });
+  kits.instanceMatrix.needsUpdate = true;
+  group.add(kits);
 
-  posts.instanceMatrix.needsUpdate = true;
-  boards.instanceMatrix.needsUpdate = true;
-  caps.instanceMatrix.needsUpdate = true;
-  group.add(posts, boards, caps);
+  // Decoy wayfinding boards: one short post and a small blank board at each
+  // untaken fork, angled to face the arriving rider — the road not taken,
+  // labeled the way resorts label it.
+  if (branches.length > 0) {
+    const decoyGeometry = decoyKitGeometry();
+    resources.push(decoyGeometry);
+    const decoys = new InstancedMesh(decoyGeometry, material, branches.length);
+    branches.forEach((b, i) => {
+      const along = 14;
+      const aside = 4.6;
+      const x = b.x0 + b.dirX * along + b.dirZ * aside;
+      const z = b.z0 + b.dirZ * along - b.dirX * aside;
+      const ground = b.y0 - b.slope * along - 0.4;
+      const yaw = Math.atan2(-b.dirX, -b.dirZ) + 0.12;
+      q.setFromAxisAngle(up, yaw);
+      pos.set(x, ground, z);
+      m.compose(pos, q, unit);
+      decoys.setMatrixAt(i, m);
+    });
+    decoys.instanceMatrix.needsUpdate = true;
+    group.add(decoys);
+  }
+
   return { group, resources, placements };
 }
