@@ -3,8 +3,6 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  ConeGeometry,
-  CylinderGeometry,
   Fog,
   Group,
   InstancedMesh,
@@ -14,9 +12,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
-  Quaternion,
   Scene,
-  Vector3,
   WebGLRenderer,
 } from "three";
 import { line3d } from "~/content/line3d";
@@ -35,11 +31,14 @@ import { deriveForkBranches } from "~/lib/world/junctions";
 import { createTerrainBuilder } from "~/lib/world/terrain";
 import { planTown } from "~/lib/world/town";
 import { deriveDynamics, emptyDynamics } from "./dynamics";
+import { createRunMarkers } from "./furniture";
 import { ANIME, SUN_DIR } from "./palette";
 import { createMassif, createRidges } from "./ridges";
+import { mergeColoredParts } from "./merge";
 import { createSignLayer, type SignLayer } from "./sign-layer";
 import { createSigns } from "./signs";
 import { createSky } from "./sky";
+import { createForest } from "./trees";
 import { createTown } from "./town";
 import { createContourMaterial } from "./terrain-material";
 
@@ -74,7 +73,6 @@ const TERRAIN_CELL_M = 4;
 const TERRAIN_CHUNKS = 8;
 const TERRAIN_ROW_SLICE = 96;
 const TRI_SLICE = 12288;
-const TREE_SLICE = 600;
 const LIFT_TOWERS = 7;
 
 export interface Rig3dTelemetry {
@@ -132,6 +130,8 @@ export function startRig3d({
   let camera!: PerspectiveCamera;
   /** Sky + far ranges: follows the camera's position, never its rotation. */
   let backdrop: Group | undefined;
+  /** Scroll-linked cloud drift (Phase G4): the sky moves only with the ride. */
+  let skyDrift: ((t: number) => void) | undefined;
   let signLayer: SignLayer | undefined;
   let lut!: ReturnType<typeof buildLineLut>;
   let loop!: ScrollLoop;
@@ -191,6 +191,7 @@ export function startRig3d({
       camera.updateProjectionMatrix();
     }
     backdrop?.position.copy(camera.position); // infinitely-far scenery
+    skyDrift?.(t);
     signLayer?.update(t);
     if (pov) {
       const crouch = (EYE_HEIGHT_M - pose.eyeHeightM) / EYE_HEIGHT_M;
@@ -299,6 +300,7 @@ export function startRig3d({
     if (disposed) return;
     backdrop = new Group();
     const sky = createSky(line3d.seed);
+    skyDrift = sky.drift;
     const ridges = createRidges(line3d.seed);
     sky.resources.forEach(track);
     ridges.resources.forEach(track);
@@ -333,11 +335,16 @@ export function startRig3d({
     // Flat-shaded facets: expand to non-indexed triangles, bake the palette
     // (warm-lit snow, saturated blue shadow, sienna rock on the steeps, a
     // hazy noise wash) with one golden-hour shade per face, split into z-band
-    // chunks so frustum culling skips what fog hides.
+    // chunks so frustum culling skips what fog hides. Phase G2 layers three
+    // more bakes on top: concavity AO (gullies pool cool shadow), forest
+    // floor under the groves (the same density field the scatter reads), and
+    // wind-drift bands across the open snowfields.
     const tintNoise = createNoise2D(line3d.seed ^ 0x7a9e);
+    const forestNoise = createNoise2D(line3d.seed ^ 0x0dd5ea);
     const snowColor = new Color();
     const rockColor = new Color();
     const faceColor = new Color();
+    const aoColor = ANIME.snowShade.clone().multiplyScalar(0.72);
     const triCount = builder.indices.length / 3;
     const sx = SUN_DIR.x;
     const sy = SUN_DIR.y;
@@ -347,6 +354,7 @@ export function startRig3d({
       const chunkEnd = Math.min(chunkStart + chunkTris, triCount);
       const flatPos = new Float32Array((chunkEnd - chunkStart) * 9);
       const flatCol = new Float32Array((chunkEnd - chunkStart) * 9);
+      const flatGroom = new Float32Array((chunkEnd - chunkStart) * 6);
       for (let start = chunkStart; start < chunkEnd; start += TRI_SLICE) {
         const end = Math.min(start + TRI_SLICE, chunkEnd);
         for (let tri = start; tri < end; tri++) {
@@ -368,7 +376,13 @@ export function startRig3d({
           ny /= nLen;
           nz /= nLen;
           const cx = (p[ia]! + p[ib]! + p[ic]!) / 3;
+          const cy = (p[ia + 1]! + p[ib + 1]! + p[ic + 1]!) / 3;
           const cz = (p[ia + 2]! + p[ib + 2]! + p[ic + 2]!) / 3;
+          const groom =
+            (builder.corridor[ia / 3]! +
+              builder.corridor[ib / 3]! +
+              builder.corridor[ic / 3]!) /
+            3;
           // Steep faces break through the snow as sienna rock; every face
           // blends its lit and shadow paint by how squarely it takes the low
           // sun — snow that faces away goes properly blue.
@@ -377,11 +391,34 @@ export function startRig3d({
           const lit = smooth01(-0.08, 0.62, Math.max(0, nx * sx + ny * sy + nz * sz));
           snowColor.copy(ANIME.snowShade).lerp(ANIME.snowLit, lit);
           rockColor.copy(ANIME.rockShade).lerp(ANIME.rockLit, lit);
-          faceColor
-            .copy(snowColor)
-            .lerp(rockColor, rockMix * 0.88)
-            .lerp(ANIME.haze, wash);
+          faceColor.copy(snowColor).lerp(rockColor, rockMix * 0.88);
+          // The woods own their ground: where the scatter's density field
+          // grows groves, the snow dims toward the under-canopy blue-green,
+          // so the forest reads continuous from any distance.
+          const floorMix =
+            smooth01(-0.1, 0.42, fbm(forestNoise, cx * 0.009, cz * 0.009, 2)) *
+            (1 - rockMix) *
+            (1 - groom);
+          faceColor.lerp(ANIME.forestFloor, floorMix * 0.42);
+          // Wind-drift bands, elongated cross-slope on the open fields.
+          const band =
+            (fbm(tintNoise, cx * 0.006, cz * 0.028, 2) * 0.5 + 0.5) *
+            (1 - rockMix) *
+            (1 - floorMix) *
+            (1 - groom);
+          faceColor.lerp(ANIME.snowShade, band * 0.1);
+          // Concavity AO: gullies and the corridor's cut edges pool shadow.
+          const around =
+            (builder.heightAt(cx - 6, cz) +
+              builder.heightAt(cx + 6, cz) +
+              builder.heightAt(cx, cz - 6) +
+              builder.heightAt(cx, cz + 6)) /
+              4 -
+            cy;
+          faceColor.lerp(aoColor, smooth01(0.4, 2.6, around) * 0.24);
+          faceColor.lerp(ANIME.haze, wash);
           const o = (tri - chunkStart) * 9;
+          const o2 = (tri - chunkStart) * 6;
           for (let v = 0; v < 3; v++) {
             const src = v === 0 ? ia : v === 1 ? ib : ic;
             flatPos[o + v * 3] = p[src]!;
@@ -390,6 +427,8 @@ export function startRig3d({
             flatCol[o + v * 3] = faceColor.r;
             flatCol[o + v * 3 + 1] = faceColor.g;
             flatCol[o + v * 3 + 2] = faceColor.b;
+            flatGroom[o2 + v * 2] = builder.corridor[src / 3]!;
+            flatGroom[o2 + v * 2 + 1] = builder.across[src / 3]!;
           }
         }
         await yieldFrame();
@@ -398,72 +437,38 @@ export function startRig3d({
       const geometry = track(new BufferGeometry());
       geometry.setAttribute("position", new BufferAttribute(flatPos, 3));
       geometry.setAttribute("color", new BufferAttribute(flatCol, 3));
+      geometry.setAttribute("aGroom", new BufferAttribute(flatGroom, 2));
       geometry.computeBoundingSphere();
       scene.add(new Mesh(geometry, terrainMaterial));
       await yieldFrame();
       if (disposed) return;
     }
 
-    // Treeline: three instanced draws (canopy, trunk, snow dust on the
-    // crown), deterministic from the content seed.
+    // Treeline (Phase G1): clustered groves instanced from four sun-baked
+    // spruce archetypes — one draw per archetype, deterministic from the seed.
     const trees = scatterTrees(lut, line3d.seed, { branches });
     await yieldFrame();
     if (disposed) return;
-    const canopyGeometry = track(new ConeGeometry(0.42, 0.85, 6));
-    canopyGeometry.translate(0, 0.62, 0);
-    const trunkGeometry = track(new CylinderGeometry(0.045, 0.07, 0.32, 5));
-    trunkGeometry.translate(0, 0.16, 0);
-    const dustGeometry = track(new ConeGeometry(0.31, 0.46, 6));
-    dustGeometry.translate(0, 0.82, 0);
-    const canopyMaterial = track(new MeshBasicMaterial({ color: 0xffffff }));
-    const trunkMaterial = track(new MeshBasicMaterial({ color: ANIME.trunk }));
-    const dustMaterial = track(new MeshBasicMaterial({ color: ANIME.snowDust }));
-    const canopies = new InstancedMesh(canopyGeometry, canopyMaterial, trees.length);
-    const trunks = new InstancedMesh(trunkGeometry, trunkMaterial, trees.length);
-    const dust = new InstancedMesh(dustGeometry, dustMaterial, trees.length);
-    {
-      const m = new Matrix4();
-      const q = new Quaternion();
-      const pos = new Vector3();
-      const scale = new Vector3();
-      const up = new Vector3(0, 1, 0);
-      const tint = new Color();
-      for (let start = 0; start < trees.length; start += TREE_SLICE) {
-        const end = Math.min(start + TREE_SLICE, trees.length);
-        for (let i = start; i < end; i++) {
-          const tree = trees[i]!;
-          const ground = builder.heightAt(tree.x, tree.z);
-          q.setFromAxisAngle(up, tree.tint * Math.PI);
-          pos.set(tree.x, ground - 0.15, tree.z);
-          scale.setScalar(tree.heightM);
-          m.compose(pos, q, scale);
-          canopies.setMatrixAt(i, m);
-          trunks.setMatrixAt(i, m);
-          dust.setMatrixAt(i, m);
-          // Cold spruce, bluer in the woods' shadowed patches.
-          tint
-            .copy(ANIME.spruce)
-            .lerp(ANIME.spruceShade, 0.3 + 0.3 * Math.abs(tree.tint))
-            .offsetHSL(0, 0, tree.tint * 0.03);
-          canopies.setColorAt(i, tint);
-        }
-        await yieldFrame();
-        if (disposed) return;
-      }
-      canopies.instanceMatrix.needsUpdate = true;
-      trunks.instanceMatrix.needsUpdate = true;
-      dust.instanceMatrix.needsUpdate = true;
-      if (canopies.instanceColor) canopies.instanceColor.needsUpdate = true;
-    }
-    scene.add(canopies, trunks, dust);
+    const forest = createForest(trees, builder.heightAt, line3d.seed);
+    forest.resources.forEach(track);
+    scene.add(forest.group);
+    await yieldFrame();
+    if (disposed) return;
 
     // The lift line climbs past drop 1 to the summit station — the gondola
     // credits' eventual 3D home (Phase E stretch); towers + cable for now.
-    const towerPostGeometry = track(new BoxGeometry(0.7, 11, 0.7));
-    const towerArmGeometry = track(new BoxGeometry(5.5, 0.5, 0.5));
-    const steel = track(new MeshBasicMaterial({ color: ANIME.steel }));
-    const towerPosts = new InstancedMesh(towerPostGeometry, steel, LIFT_TOWERS);
-    const towerArms = new InstancedMesh(towerArmGeometry, steel, LIFT_TOWERS);
+    // Post and cross-arm bake into one T-shaped geometry: one instanced draw.
+    const towerPost = new BoxGeometry(0.7, 11, 0.7);
+    const towerArm = new BoxGeometry(5.5, 0.5, 0.5);
+    towerArm.translate(0, 5.2, 0);
+    const towerGeometry = track(
+      mergeColoredParts([
+        { geometry: towerPost, color: ANIME.steel },
+        { geometry: towerArm, color: ANIME.steel },
+      ]),
+    );
+    const steel = track(new MeshBasicMaterial({ vertexColors: true }));
+    const towers = new InstancedMesh(towerGeometry, steel, LIFT_TOWERS);
     const cablePoints = new Float32Array(LIFT_TOWERS * 3);
     {
       const m = new Matrix4();
@@ -474,15 +479,12 @@ export function startRig3d({
         const z = -30 + 265 * f;
         const ground = builder.heightAt(x, z);
         m.makeTranslation(x, ground + 5.2, z);
-        towerPosts.setMatrixAt(i, m);
-        m.makeTranslation(x, ground + 10.4, z);
-        towerArms.setMatrixAt(i, m);
+        towers.setMatrixAt(i, m);
         cablePoints[i * 3] = x;
         cablePoints[i * 3 + 1] = ground + 10.7;
         cablePoints[i * 3 + 2] = z;
       }
-      towerPosts.instanceMatrix.needsUpdate = true;
-      towerArms.instanceMatrix.needsUpdate = true;
+      towers.instanceMatrix.needsUpdate = true;
     }
     const cableGeometry = track(new BufferGeometry());
     cableGeometry.setAttribute("position", new BufferAttribute(cablePoints, 3));
@@ -490,7 +492,7 @@ export function startRig3d({
       cableGeometry,
       track(new LineBasicMaterial({ color: ANIME.steel })),
     );
-    scene.add(towerPosts, towerArms, cable);
+    scene.add(towers, cable);
 
     // The ski town, on real basin ground past the runout — the run aims
     // straight at it, and it resolves out of the haze as the ride descends.
@@ -505,10 +507,16 @@ export function startRig3d({
       canvas.dataset.town = String(plan.buildings.length);
     }
 
+    // Run dressing (Phase G3): bamboo edge markers whipping past at the
+    // groomed edge — the near-field speed cue.
+    const markers = createRunMarkers(lut, builder.heightAt);
+    markers.resources.forEach(track);
+    scene.add(markers.group);
+
     // Trail signs at every junction and the closed trail (ADR-8): timber
     // posts and boards in the scene; the words are DOM, projected onto the
-    // boards by the sign layer.
-    const signage = createSigns(lut);
+    // boards by the sign layer. Decoy forks get small wayfinding boards.
+    const signage = createSigns(lut, branches);
     signage.resources.forEach(track);
     scene.add(signage.group);
     if (signs) {
