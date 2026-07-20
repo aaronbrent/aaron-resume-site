@@ -12,9 +12,7 @@ export function mergeColoredParts(
   parts: Array<{ geometry: BufferGeometry; color: Color }>,
 ): BufferGeometry {
   const expanded = parts.map((part) => {
-    const nonIndexed = part.geometry.index
-      ? part.geometry.toNonIndexed()
-      : part.geometry;
+    const nonIndexed = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry;
     if (nonIndexed !== part.geometry) part.geometry.dispose();
     return { geometry: nonIndexed, color: part.color };
   });

@@ -206,7 +206,11 @@ export function createTown(
   const bodies = new InstancedMesh(bodyGeometry, bodyMaterial, buildings.length);
   const roofs = new InstancedMesh(roofGeo, roofMaterial, buildings.length);
   const windows = new InstancedMesh(windowGeometry, windowMaterial, windowSlots.length);
-  const chimneys = new InstancedMesh(chimneyGeometry, chimneyMaterial, chimneySlots.length);
+  const chimneys = new InstancedMesh(
+    chimneyGeometry,
+    chimneyMaterial,
+    chimneySlots.length,
+  );
   const lamps = new InstancedMesh(lampGeometry, lampMaterial, lampSlots.length);
   const glows = new InstancedMesh(
     windowGeometry,
@@ -262,9 +266,9 @@ export function createTown(
     const c = Math.cos(slot.yaw);
     const s = Math.sin(slot.yaw);
     pos.set(
-      slot.bx + (slot.ox * (1 + grow * 0.02)) * c + slot.oz * s,
+      slot.bx + slot.ox * (1 + grow * 0.02) * c + slot.oz * s,
       ground + slot.oy,
-      slot.bz - (slot.ox * (1 + grow * 0.02)) * s + slot.oz * c,
+      slot.bz - slot.ox * (1 + grow * 0.02) * s + slot.oz * c,
     );
     scale.set(slot.w * (1 + grow), slot.h * (1 + grow), 1);
     m.compose(pos, windowQuat, scale);

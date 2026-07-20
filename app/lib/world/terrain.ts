@@ -189,8 +189,7 @@ export function createTerrainBuilder(
           lineY -
           0.4 -
           drop +
-          outside *
-            ((wall + spur) * (1 - open) + relief * (1 - 0.6 * open) + 0.4);
+          outside * ((wall + spur) * (1 - open) + relief * (1 - 0.6 * open) + 0.4);
         // The corduroy mask: full strength on the groomed flat, gone at the
         // shoulder's start.
         let groom = 1 - smoothstep(apron + 1, apron + 5, dist);
