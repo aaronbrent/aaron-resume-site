@@ -134,3 +134,20 @@
     padding-top: 44svh;
   }
 }
+
+/*
+ * Poster backdrop (W5): a render of the real hero shot (pnpm poster) behind
+ * the document whenever the canvas isn't drawing — no WebGL, reduced
+ * motion, no JS, or while the 3D chunk loads. The canvas is opaque, so once
+ * it draws it simply covers this.
+ */
+[data-scene-root] {
+  background: #07061a url("/poster/poster-landscape.jpg") center / cover no-repeat;
+}
+
+@media (orientation: portrait) {
+  [data-scene-root] {
+    background-image: url("/poster/poster-portrait.jpg");
+    background-position: center top;
+  }
+}

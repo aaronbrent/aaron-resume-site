@@ -17,7 +17,8 @@
     "lighthouse": "lhci autorun",
     "bundle:check": "tsx scripts/check-bundle.ts",
     "pdf": "node scripts/generate-resume-pdf.mjs",
-    "deploy:railway": "tsx scripts/deploy-railway.ts"
+    "deploy:railway": "tsx scripts/deploy-railway.ts",
+    "poster": "tsx scripts/render-poster.ts"
   },
   "dependencies": {
     "@react-router/node": "^7.6.0",

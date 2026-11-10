@@ -17,7 +17,15 @@ import { ToneMappingMode, type EffectComposer as Composer } from "postprocessing
  * The composer renders the scene into a half-float target and switches the
  * renderer's own tone mapping off, so ACES is applied here, after bloom.
  */
-export function Effects({ onFirstFrame }: { onFirstFrame?: () => void }) {
+export interface EffectsProps {
+  onFirstFrame?: () => void;
+  /** MSAA samples on the composer input (quality tier). */
+  multisampling?: number;
+  /** HDR bloom on emissive surfaces (quality tier). */
+  bloom?: boolean;
+}
+
+export function Effects({ onFirstFrame, multisampling = 4, bloom = true }: EffectsProps) {
   const composer = useRef<Composer>(null);
   const reported = useRef(false);
 
@@ -30,12 +38,12 @@ export function Effects({ onFirstFrame }: { onFirstFrame?: () => void }) {
   }, 2);
 
   return (
-    <EffectComposer ref={composer} multisampling={4}>
+    <EffectComposer ref={composer} multisampling={multisampling}>
       <Bloom
         mipmapBlur
         luminanceThreshold={1}
         luminanceSmoothing={0.25}
-        intensity={1.3}
+        intensity={bloom ? 1.3 : 0}
         radius={0.8}
       />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />

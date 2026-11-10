@@ -71,9 +71,17 @@ function scatter(): { positions: Float32Array; seeds: Float32Array } {
   return { positions, seeds };
 }
 
-export function DustMotes({ qa }: { qa: boolean }) {
+/** `count` ≤ COUNT draws a deterministic prefix of the same scatter (quality tier). */
+export function DustMotes({ qa, count = COUNT }: { qa: boolean; count?: number }) {
   const dpr = useThree((s) => s.viewport.dpr);
-  const { positions, seeds } = useMemo(scatter, []);
+  const all = useMemo(scatter, []);
+  const { positions, seeds } = useMemo(() => {
+    const n = Math.max(0, Math.min(COUNT, Math.floor(count)));
+    return {
+      positions: all.positions.subarray(0, n * 3),
+      seeds: all.seeds.subarray(0, n * 4),
+    };
+  }, [all, count]);
   const time = useMemo(() => ({ value: QA_TIME }), []);
   const pixelRatio = useMemo(() => ({ value: 1 }), []);
   useLayoutEffect(() => {
@@ -87,7 +95,8 @@ export function DustMotes({ qa }: { qa: boolean }) {
 
   return (
     <points name="dust-motes" frustumCulled={false}>
-      <bufferGeometry>
+      {/* Keyed on the count so a tier change builds a fresh geometry. */}
+      <bufferGeometry key={positions.length}>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
         <bufferAttribute attach="attributes-aSeed" args={[seeds, 4]} />
       </bufferGeometry>

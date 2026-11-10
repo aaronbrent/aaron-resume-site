@@ -13,8 +13,17 @@ export function meta() {
     { property: "og:description", content: site.description },
     { property: "og:type", content: "profile" },
     { property: "og:url", content: site.url },
-    // og:image returns with the rendered poster (W5).
-    { name: "twitter:card", content: "summary" },
+    // Rendered from the real scene by `pnpm poster` (W5).
+    { property: "og:image", content: `${site.url}/poster/og.jpg` },
+    { property: "og:image:type", content: "image/jpeg" },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    {
+      property: "og:image:alt",
+      content: "Aaron Ellis — a career drawn as a star system",
+    },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:image", content: `${site.url}/poster/og.jpg` },
   ];
 }
 

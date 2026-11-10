@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ACESFilmicToneMapping, SRGBColorSpace } from "three";
-import { useThree, type RenderProps } from "@react-three/fiber";
+import { useFrame, useThree, type RenderProps } from "@react-three/fiber";
 import { planets } from "~/content/planets";
 import { subscribe } from "~/lib/progress";
-import { DPR_MAX, isQaMode } from "./constants";
+import { isQaMode } from "./constants";
 import { DustMotes } from "./DustMotes";
 import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
@@ -12,6 +12,7 @@ import { Lighting } from "./Lighting";
 import { Nebula } from "./Nebula";
 import { OrbitGuides } from "./OrbitGuides";
 import { PlanetBody } from "./planets";
+import { FpsGovernor, forcedTier, initialTier, TIERS, type Tier } from "./quality";
 import { SceneCanvas } from "./SceneCanvas";
 import { Sun } from "./Sun";
 
@@ -23,7 +24,11 @@ export interface SceneProps {
 }
 
 // Module-level so re-renders never hand R3F "new" camera/gl options.
-const DPR: [number, number] = [1, DPR_MAX];
+const DPRS: Record<Tier, [number, number]> = {
+  2: [1, TIERS[2].dprMax],
+  1: [1, TIERS[1].dprMax],
+  0: [1, TIERS[0].dprMax],
+};
 /** The composer does the AA (MSAA on its input buffer) and tone mapping. */
 const GL: RenderProps<HTMLCanvasElement>["gl"] = {
   antialias: false,
@@ -62,16 +67,45 @@ function QaFrameDriver() {
   return null;
 }
 
+function startingTier(): Tier {
+  return (
+    forcedTier(window.location.search) ??
+    initialTier({
+      devicePixelRatio: window.devicePixelRatio || 1,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+      cores: navigator.hardwareConcurrency || undefined,
+    })
+  );
+}
+
+/** Steps quality down (never up) when the frame rate can't hold (§6). */
+function QualityGovernor({ onDrop }: { onDrop: () => void }) {
+  const governor = useRef(new FpsGovernor());
+  useFrame((_, delta) => {
+    if (governor.current.sample(delta)) onDrop();
+  });
+  return null;
+}
+
 /**
  * The star system (docs/PLAN-STAR-SYSTEM.md §4). Lazy-loaded by SceneMount;
  * this module and everything it imports form the 3D chunk.
  */
 export default function Scene({ onFirstFrame, onFail }: SceneProps) {
   const qa = useMemo(() => isQaMode(), []);
+  const pinned = useMemo(() => forcedTier(window.location.search) !== null, []);
+  const [tier, setTier] = useState<Tier>(startingTier);
+  const quality = TIERS[tier];
+  const dropTier = useCallback(() => setTier((t) => (t > 0 ? ((t - 1) as Tier) : t)), []);
+  useEffect(() => {
+    document.documentElement.dataset.sceneTier = String(tier);
+  }, [tier]);
 
   return (
     <SceneCanvas
-      dpr={DPR}
+      dpr={DPRS[tier]}
       frameloop={qa ? "demand" : "always"}
       gl={GL}
       camera={CAMERA}
@@ -82,7 +116,7 @@ export default function Scene({ onFirstFrame, onFail }: SceneProps) {
       <color attach="background" args={["#07061a"]} />
       <CameraRig qa={qa} />
       <Nebula />
-      <DustMotes qa={qa} />
+      <DustMotes qa={qa} count={quality.dust} />
       <Lighting />
       <Sun qa={qa} />
       <OrbitGuides />
@@ -92,9 +126,15 @@ export default function Scene({ onFirstFrame, onFail }: SceneProps) {
           visual={p.visual}
           position={planetPosition(p.visual)}
           qa={qa}
+          detail={quality.detail}
         />
       ))}
-      <Effects onFirstFrame={onFirstFrame} />
+      <Effects
+        onFirstFrame={onFirstFrame}
+        multisampling={quality.multisampling}
+        bloom={quality.bloom}
+      />
+      {pinned || tier === 0 ? null : <QualityGovernor onDrop={dropTier} />}
       {qa ? <QaFrameDriver /> : null}
     </SceneCanvas>
   );

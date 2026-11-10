@@ -29,6 +29,7 @@ postprocessing (lazy-loaded 3D layer over a complete semantic document).
 | `pnpm test:e2e`             | Playwright + axe against the static build (build first)             |
 | `pnpm bundle:check`         | Critical-path / lazy-3D-chunk gzip budgets, no dev-only tools       |
 | `pnpm lighthouse`           | Lighthouse CI with `budgets.json` assertions                        |
+| `pnpm poster`               | Render the posters + social card from the real scene (build first)  |
 | `pnpm pdf`                  | Re-print `/resume` to `public/aaron-ellis-resume.pdf` (build first) |
 
 In sandboxes with a system Chromium, prefix Playwright-based commands with
