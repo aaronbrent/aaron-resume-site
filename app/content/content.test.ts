@@ -1,66 +1,69 @@
 import { describe, expect, it } from "vitest";
-import { closedTrail } from "./closed-trail";
-import { gondolaCredits } from "./gondola";
-import { runMeta } from "./meta";
+import { educationCredits } from "./education";
+import { formatPeriod, formatYearMonth } from "./format";
+import { planets } from "./planets";
 import { skills } from "./skills";
-import { waypoints } from "./waypoints";
 
-const MIN_DWELL_T = 0.1; // §2: waypoint t spacing ≥ minimum dwell
+const YM = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-describe("waypoints", () => {
-  it("has unique ids", () => {
-    const ids = waypoints.map((w) => w.id);
+describe("planets", () => {
+  it("has five planets with unique ids", () => {
+    const ids = planets.map((p) => p.id);
+    expect(ids).toEqual(["sofi", "public", "empirium", "nuvalabs", "topstep"]);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("keeps every t in (0, 1), strictly increasing (DOM order = t order)", () => {
-    for (const w of waypoints) {
-      expect(w.t).toBeGreaterThan(0);
-      expect(w.t).toBeLessThan(1);
-    }
-    for (let i = 1; i < waypoints.length; i++) {
-      expect(waypoints[i]!.t).toBeGreaterThan(waypoints[i - 1]!.t);
-    }
+  it("keeps index equal to array position (orbit order)", () => {
+    planets.forEach((p, i) => expect(p.index).toBe(i));
   });
 
-  it("spaces waypoints at least the minimum dwell apart", () => {
-    for (let i = 1; i < waypoints.length; i++) {
-      expect(waypoints[i]!.t - waypoints[i - 1]!.t).toBeGreaterThanOrEqual(MIN_DWELL_T);
-    }
-  });
-
-  it("has 2–4 concrete evidence bullets per waypoint (§4)", () => {
-    for (const w of waypoints) {
-      expect(w.evidence.length).toBeGreaterThanOrEqual(2);
-      expect(w.evidence.length).toBeLessThanOrEqual(4);
-    }
-  });
-
-  it("cross-references only skills that exist in the legend", () => {
-    const known = new Set(skills.map((s) => s.id));
-    for (const w of waypoints) {
-      for (const t of w.tech) expect(known.has(t)).toBe(true);
-    }
-  });
-
-  it("uses valid ISO year-month periods in chronological order", () => {
-    const ym = /^\d{4}-(0[1-9]|1[0-2])$/;
-    for (const w of waypoints) {
-      expect(w.period.start).toMatch(ym);
-      if (w.period.end !== "present") {
-        expect(w.period.end).toMatch(ym);
-        expect(w.period.end > w.period.start).toBe(true);
+  it("uses valid year-month periods, chronological and non-overlapping", () => {
+    planets.forEach((p, i) => {
+      expect(p.period.start).toMatch(YM);
+      const isLast = i === planets.length - 1;
+      if (isLast) {
+        expect(p.period.end).toBe("present");
+      } else {
+        expect(p.period.end).toMatch(YM);
+        expect(p.period.end >= p.period.start).toBe(true);
+        expect(planets[i + 1]!.period.start > p.period.end).toBe(true);
       }
+    });
+  });
+
+  it("has 2–4 evidence bullets per planet", () => {
+    for (const p of planets) {
+      expect(p.evidence.length).toBeGreaterThanOrEqual(2);
+      expect(p.evidence.length).toBeLessThanOrEqual(4);
     }
   });
 
-  it("one named run per waypoint, names unique (restraint rule §4)", () => {
-    const names = waypoints.map((w) => w.trailName);
+  it("cross-references only skills that exist", () => {
+    const known = new Set<string>(skills.map((s) => s.id));
+    for (const p of planets) {
+      for (const t of p.tech) expect(known.has(t)).toBe(true);
+    }
+  });
+
+  it("places orbits strictly outward with unique nicknames", () => {
+    for (let i = 1; i < planets.length; i++) {
+      expect(planets[i]!.visual.orbitRadius).toBeGreaterThan(
+        planets[i - 1]!.visual.orbitRadius,
+      );
+    }
+    const names = planets.map((p) => p.nickname);
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("keeps the May → Oct 2026 gap visible (no filler)", () => {
+    const nuva = planets.find((p) => p.id === "nuvalabs")!;
+    const topstep = planets.find((p) => p.id === "topstep")!;
+    expect(nuva.period.end).toBe("2026-05");
+    expect(topstep.period.start).toBe("2026-10");
   });
 });
 
-describe("skills legend", () => {
+describe("skills", () => {
   it("has unique ids and non-empty labels", () => {
     const ids = skills.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -68,33 +71,16 @@ describe("skills legend", () => {
   });
 });
 
-describe("gondola", () => {
-  it("keeps the ride short: 3–5 credits (§5)", () => {
-    expect(gondolaCredits.length).toBeGreaterThanOrEqual(3);
-    expect(gondolaCredits.length).toBeLessThanOrEqual(5);
+describe("education", () => {
+  it("keeps the list short: 3–5 credits", () => {
+    expect(educationCredits.length).toBeGreaterThanOrEqual(3);
+    expect(educationCredits.length).toBeLessThanOrEqual(5);
   });
 });
 
-describe("closed trail", () => {
-  it("is a concise, post-run story placed after the career waypoints", () => {
-    expect(closedTrail.id).toBe("closed-trail");
-    expect(closedTrail.t).toBeLessThan(1);
-    expect(closedTrail.story.length).toBeLessThanOrEqual(240);
-  });
-
-  it("clears the last (tallest) waypoint so the mobile card never overlaps it", () => {
-    // Single-column mobile stacks the postscript directly under NuvaLabs, which
-    // is the tallest card. It must sit well clear of that footprint — merely
-    // being > last.t (as the original 0.91 was) still lands on top of it.
-    const CLEARANCE_T = 0.12;
-    expect(closedTrail.t - waypoints.at(-1)!.t).toBeGreaterThanOrEqual(CLEARANCE_T);
-  });
-});
-
-describe("run meta", () => {
-  it("matches the §2 derivation for the current waypoint count", () => {
-    const total =
-      runMeta.introSvh + waypoints.length * runMeta.dwellSvh + runMeta.outroSvh;
-    expect(total).toBe(960);
+describe("formatPeriod", () => {
+  it("renders month names and Present", () => {
+    expect(formatYearMonth("2024-06")).toBe("Jun 2024");
+    expect(formatPeriod({ start: "2026-10", end: "present" })).toBe("Oct 2026 — Present");
   });
 });

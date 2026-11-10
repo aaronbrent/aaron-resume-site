@@ -1,11 +1,19 @@
 /*
  * Print stylesheet (PLAN §7): ink on white, URLs printed after links,
- * sane page breaks, no mountain. Applies to both routes.
+ * sane page breaks, no 3D layer. Applies to both routes.
  */
 @media print {
+  /* The screen theme is light-on-dark; paper is always ink on white. */
+  html,
+  html * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
   html {
-    background: #fff;
-    color: #000;
+    background: #fff !important;
   }
 
   body {
@@ -13,7 +21,7 @@
     line-height: 1.45;
   }
 
-  /* The visual layer never prints (Phase 2+: <MountainStage>, spray, cues). */
+  /* The 3D layer never prints. */
   [data-print-hidden],
   [aria-hidden="true"] {
     display: none !important;
@@ -31,18 +39,17 @@
     text-decoration: none;
   }
 
-  section,
+  /* Keep each role together, but let long sections flow across pages —
+     avoiding breaks on a whole <section> pushed Experience to page 2. */
   article {
     break-inside: avoid;
   }
 
-  /* The run collapses to a plain document: no 880svh canvas, no absolute
-     placement — sections stack in DOM (= narrative) order. */
-  .run-container {
-    height: auto !important;
-  }
-  .waypoint-slot {
-    position: static !important;
+  /* Each section is a full viewport on screen; on paper they just stack. */
+  section,
+  header,
+  footer {
+    min-height: 0 !important;
   }
 
   h1,

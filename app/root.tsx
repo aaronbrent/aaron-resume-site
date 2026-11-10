@@ -28,7 +28,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="bg-paper text-ink">
+    <html lang="en" className="bg-void text-starlight">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -36,17 +36,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="font-body antialiased">
-        {/* Reveal gating (§7): hidden-then-reveal styles only apply under
-            html.js, so a no-JS visit sees everything. Runs pre-paint. */}
+        {/* html.js gates any JS-only styling, so a no-JS visit sees the
+            plain document. Runs pre-paint. */}
         <script
           dangerouslySetInnerHTML={{
-            __html:
-              "document.documentElement.classList.add('js');(function(){var done=function(){document.documentElement.classList.add('has-scrolled')};if(window.scrollY)done();window.addEventListener('scroll',done,{passive:true,once:true})})()",
+            __html: "document.documentElement.classList.add('js')",
           }}
         />
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:bg-powder focus:px-4 focus:py-2 focus:text-ink focus:outline-2 focus:outline-offset-2 focus:outline-patrol"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:bg-starlight focus:px-4 focus:py-2 focus:text-void focus:outline-2 focus:outline-offset-2 focus:outline-sunlight"
         >
           Skip to content
         </a>
@@ -63,14 +62,14 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Whiteout";
+  let message = "Lost in space";
   let details = "An unexpected error occurred.";
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404 — Off the map" : "Error";
+    message = error.status === 404 ? "404 — Nothing in this orbit" : "Error";
     details =
       error.status === 404
-        ? "This trail doesn't exist. Head back to the summit."
+        ? "There's no page at this address. Head back to the sun."
         : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
@@ -83,8 +82,8 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       </h1>
       <p className="mt-4">{details}</p>
       <p className="mt-8">
-        <a href="/" className="text-bluebird-deep underline">
-          Back to the mountain
+        <a href="/" className="text-nebula underline">
+          Back to the star system
         </a>
       </p>
     </main>

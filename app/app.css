@@ -1,25 +1,18 @@
 @import "tailwindcss";
 @import "./print.css";
-@import "./stage.css";
 
 /*
- * Design tokens (PLAN §8) — the printed-piste-map register.
- * These become real CSS custom properties (--color-paper, …) that the rig
- * and spray canvas read via getComputedStyle. Single source of truth.
+ * Design tokens (docs/PLAN-STAR-SYSTEM.md) — deep-space register.
+ * Text pairs are checked for WCAG AA on --color-void:
+ *   starlight ≈ 16:1, dust ≈ 9:1, nebula ≈ 10:1, sunlight ≈ 10:1.
+ * Typography is revisited in W4; the fonts below carry over for now.
  */
 @theme {
-  --color-paper: #f4efe3;
-  --color-ink: #22303a;
-  --color-evergreen: #2e5e4e;
-  --color-bluebird: #3d7db5;
-  --color-patrol: #e4572e;
-  --color-powder: #ffffff;
-  /* Text-safe link blue: bluebird fails WCAG AA on paper (~3.9:1); this
-     passes at 4.5:1+. Use bluebird for large/decorative, this for links. */
-  --color-bluebird-deep: #2c5d88;
-  /* Text-safe patrol: patrol itself is 3.21:1 on paper — fine for the focus
-     ring and rope (non-text, needs 3:1), not for small text. */
-  --color-patrol-deep: #bd3f10;
+  --color-void: #0b1026;
+  --color-starlight: #f3eee2;
+  --color-dust: #aeb4cf;
+  --color-nebula: #a9c8ff;
+  --color-sunlight: #ffb547;
 
   --font-display: "Barlow Condensed", "Barlow Condensed Fallback", sans-serif;
   --font-body: "Public Sans Variable", "Public Sans Fallback", sans-serif;

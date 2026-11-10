@@ -1,26 +1,15 @@
-import type { RunMeta } from "./types";
-
-/** Scroll-length constants (PLAN §2). DWELL is the one tuning constant. */
-export const runMeta = {
-  dwellSvh: 160,
-  introSvh: 100,
-  // Runout carries the post-career postscript (the closed trail) below the
-  // last — and tallest — waypoint before base camp. It must be long enough
-  // that the single-column mobile stack never lands the postscript on top of
-  // NuvaLabs. Trail viewBox heights (lib/trail/configs) scale with this.
-  outroSvh: 220,
-} as const satisfies RunMeta;
-
 export const site = {
-  /** TODO(open question #2): final domain undecided — aaronellis.dev vs aaronbrentellis.com */
+  /**
+   * TODO(W7): switch to the live `*.up.railway.app` URL once Aaron runs the
+   * first deploy, and update public/sitemap.xml + robots.txt to match.
+   */
   url: "https://aaronellis.dev",
   name: "Aaron Ellis",
-  title: "Aaron Ellis — Staff Full-Stack Engineer",
+  title: "Aaron Ellis — Staff Software Engineer",
   positioning:
     "Staff full-stack engineer — TypeScript, React, Node. 12 years of consumer fintech.",
   description:
-    "Staff full-stack engineer — TypeScript, React, Node. 12 years of consumer fintech. SoFi, Public.com, NuvaLabs. The career, drawn as a trail map.",
-  seasons: "Seasons 2014–2026",
+    "Staff full-stack engineer — TypeScript, React, Node. 12 years in fintech and trading: SoFi, Public.com, Empirium, NuvaLabs, Topstep. The career, drawn as a star system.",
 } as const;
 
 export const contact = {
