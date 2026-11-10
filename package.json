@@ -6,6 +6,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "preview": "sirv build/client --port 4173 --quiet",
+    "start": "sirv build/client --host 0.0.0.0 --port ${PORT:-3000} --etag --maxage 3600 --single __spa-fallback.html",
     "typecheck": "react-router typegen && tsc",
     "lint": "eslint .",
     "format": "prettier --check .",
@@ -15,7 +16,8 @@
     "test:e2e": "playwright test",
     "lighthouse": "lhci autorun",
     "bundle:check": "tsx scripts/check-bundle.ts",
-    "pdf": "node scripts/generate-resume-pdf.mjs"
+    "pdf": "node scripts/generate-resume-pdf.mjs",
+    "deploy:railway": "tsx scripts/deploy-railway.ts"
   },
   "dependencies": {
     "@react-router/node": "^7.6.0",
@@ -27,6 +29,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router": "^7.6.0",
+    "sirv-cli": "^3.0.1",
     "three": "^0.185.1"
   },
   "devDependencies": {
@@ -48,7 +51,6 @@
     "jsdom": "^26.1.0",
     "leva": "^0.10.1",
     "prettier": "^3.5.3",
-    "sirv-cli": "^3.0.1",
     "tailwindcss": "^4.1.8",
     "tsx": "^4.23.0",
     "typescript": "^5.8.3",

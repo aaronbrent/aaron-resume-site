@@ -1,9 +1,13 @@
 /**
  * Scroll progress store (docs/PLAN-STAR-SYSTEM.md §5, amendment C.1).
  *
- * Native document scroll drives the flight — no drei ScrollControls. The page
- * is 1 hero page + one page per planet; `progress ∈ [0, 1]` spans the whole
- * scrollable distance, so stop 0 is the hero and stop i + 1 is planet i.
+ * Native document scroll drives the flight — no drei ScrollControls. The
+ * document's stops are the hero header and one section per planet (children
+ * of #main). Each stop has a scroll position where it is centered in the
+ * viewport; scroll is mapped piecewise-linearly between those, so stop k is
+ * exactly on screen at stop k regardless of section heights (tall mobile
+ * sections, the contact footer after the last planet). `progress ∈ [0, 1]`
+ * is stop / planetCount: 0 = hero, (i + 1) / planetCount = planet i.
  *
  * Read it in `useFrame` via `getProgress()` (never React state), or
  * `subscribe()` for DOM overlays. The listener attaches lazily on the client.
@@ -16,9 +20,76 @@ let attached = false;
 let frame = 0;
 const listeners = new Set<Listener>();
 
+/** Elements that define the stops, in order: hero, then planets. */
+export const STOP_SELECTOR = "#main > header, #main > [data-planet]";
+
+let stopYs: number[] = [];
+
+/**
+ * Scroll position at which each stop element is centered in the viewport
+ * (tall elements: their middle at the viewport's middle), clamped to the
+ * scrollable range and kept non-decreasing.
+ */
+export function stopScrollPositions(
+  boxes: readonly { top: number; height: number }[],
+  viewport: number,
+  maxScroll: number,
+): number[] {
+  let floor = 0;
+  return boxes.map((b, i) => {
+    const centered = i === 0 ? 0 : b.top + (b.height - viewport) / 2;
+    const y = Math.min(maxScroll, Math.max(floor, centered));
+    floor = y;
+    return y;
+  });
+}
+
+/** Fractional stop index at `scrollY` given each stop's scroll position. */
+export function stopAt(scrollY: number, ys: readonly number[]): number {
+  if (ys.length < 2) return 0;
+  if (scrollY <= ys[0]!) return 0;
+  for (let k = 1; k < ys.length; k++) {
+    const a = ys[k - 1]!;
+    const b = ys[k]!;
+    if (scrollY <= b) return b > a ? k - 1 + (scrollY - a) / (b - a) : k;
+  }
+  return ys.length - 1;
+}
+
+function measureStops() {
+  const els = Array.from(document.querySelectorAll<HTMLElement>(STOP_SELECTOR));
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  stopYs = stopScrollPositions(
+    els.map((el) => ({
+      top: el.getBoundingClientRect().top + window.scrollY,
+      height: el.offsetHeight,
+    })),
+    window.innerHeight,
+    Math.max(0, maxScroll),
+  );
+}
+
 function measure(): number {
-  const max = document.documentElement.scrollHeight - window.innerHeight;
-  return max > 0 ? clamp01(window.scrollY / max) : 0;
+  const stops = stopYs.length - 1;
+  if (stops < 1) return 0;
+  return clamp01(stopAt(window.scrollY, stopYs) / stops);
+}
+
+/** Scroll position that parks stop `k` (0 = hero); for keyboard navigation. */
+export function scrollYForStop(k: number): number {
+  attach();
+  if (stopYs.length === 0) return 0;
+  return stopYs[Math.max(0, Math.min(stopYs.length - 1, k))]!;
+}
+
+/** Current fractional stop (0 = hero, i + 1 = planet i). */
+export function getStop(): number {
+  return getProgress() * Math.max(1, stopYs.length - 1);
+}
+
+function onResize() {
+  measureStops();
+  onScroll();
 }
 
 function onScroll() {
@@ -35,9 +106,14 @@ function onScroll() {
 function attach() {
   if (attached || typeof window === "undefined") return;
   attached = true;
+  measureStops();
   progress = measure();
   window.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll, { passive: true });
+  window.addEventListener("resize", onResize, { passive: true });
+  // Late layout changes (webfonts, images) move the stops.
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(onResize).observe(document.body);
+  }
 }
 
 /** Current progress (0 on the server). */

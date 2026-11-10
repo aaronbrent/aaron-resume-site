@@ -14,5 +14,7 @@ node_modules/
 .DS_Store
 *.local
 
+# Agent worktrees
+.claude/worktrees/
 # Local visual UAT screenshots (never committed)
 /screens/

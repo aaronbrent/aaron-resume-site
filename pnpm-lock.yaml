@@ -35,6 +35,9 @@ importers:
       react-router:
         specifier: ^7.6.0
         version: 7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      sirv-cli:
+        specifier: ^3.0.1
+        version: 3.0.1
       three:
         specifier: ^0.185.1
         version: 0.185.1
@@ -93,9 +96,6 @@ importers:
       prettier:
         specifier: ^3.5.3
         version: 3.9.4
-      sirv-cli:
-        specifier: ^3.0.1
-        version: 3.0.1
       tailwindcss:
         specifier: ^4.1.8
         version: 4.3.2
