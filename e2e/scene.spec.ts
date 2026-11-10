@@ -1,5 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type ConsoleMessage, type Page } from "@playwright/test";
+import { blackFraction, MAX_BLACK_FRACTION } from "./support/frame";
+import { parkAtStop, PLANETS } from "./support/scene";
 
 // Headless Chromium here is SwiftShader; ?gl=full lets the capability probe
 // accept it so the 3D layer actually loads (app/lib/capability.ts).
@@ -89,5 +91,41 @@ test.describe("3D scene layer", () => {
     await waitForScene(page);
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
+  });
+});
+
+test.describe("real-visitor rendering (no qa pinning)", () => {
+  // The bug this guards: on real GPUs the old post-processing chain drew only
+  // a strip of the frame. Software GL never reproduced it, and every pinned
+  // ?qa=1 render hid tier changes. So: native DPR 2, natural tier, let the
+  // governor settle, then check every stop draws a full frame.
+  test.use({ deviceScaleFactor: 2 });
+
+  test("every stop draws a full frame at DPR 2 after the tier settles", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.goto(SCENE_URL);
+    await waitForScene(page);
+    await page.waitForTimeout(6_000); // governor windows on software GL
+    for (let k = 0; k <= PLANETS.length; k++) {
+      await parkAtStop(page, k);
+      await page.waitForTimeout(1_500);
+      const black = await blackFraction(page);
+      expect(black, `stop ${k}: ${(black * 100).toFixed(1)}% black`).toBeLessThan(
+        MAX_BLACK_FRACTION,
+      );
+    }
+  });
+
+  test("the black-frame check itself catches a black frame", async ({ page }) => {
+    await page.goto(SCENE_URL);
+    await waitForScene(page);
+    // Simulate the failure: everything but a left strip goes black.
+    await page.addStyleTag({
+      content:
+        "[data-scene-root]::before { content: ''; position: fixed; inset: 0 0 0 12%; background: #000; z-index: 5; }",
+    });
+    expect(await blackFraction(page)).toBeGreaterThan(0.5);
   });
 });

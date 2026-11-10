@@ -103,16 +103,17 @@ circular orbit guides, one per planet.
 - A cool fill from the camera side.
 - A per-planet rim, color-matched to its palette.
 
-### Postprocessing
+### Post-processing: none (renders natively)
 
-- Bloom.
-- Vignette.
-- SMAA, or `multisampling` on the `EffectComposer`.
-- **No SSAO:** it adds almost nothing here at a high cost. Fake the contact shading in
-  the planet shaders with a fresnel rim and a terminator wrap.
-- Quality steps down through a small custom FPS governor (`app/scene/quality.ts`; drei
-  `PerformanceMonitor` was dropped for bundle size) and a DPR × screen-area budget, not
-  a width cutoff.
+- The original bloom/vignette/SMAA chain (`@react-three/postprocessing`) was removed
+  after it drew only a strip of the frame on a real Mac GPU — a failure software-GL QA
+  could not see (see §7).
+- The scene renders straight to the canvas: native MSAA, ACES tone mapping and sRGB
+  output on the renderer. Custom shaders include three's tonemapping/colorspace chunks.
+- Glow without bloom: a billboard halo behind the sun, the corona shell, emissive lava,
+  thin atmosphere shells (`ATMOSPHERE_GAIN`), and a CSS vignette.
+- Quality steps down through a small custom FPS governor (`app/scene/quality.ts`):
+  DPR cap, planet detail and dust count.
 
 ### Background
 
@@ -134,6 +135,12 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
   - Deep links (`/#topstep`) keep working, because the sections are real document
     anchors.
 
+- **Role cards float beside their planet** (wide landscape screens, scene on): each
+  prerendered `<article>` becomes a fixed glass card placed every frame next to its
+  planet's projected disc, never over it, with a connector to the rim
+  (`app/scene/card-anchor.ts`, `CardAnchors.tsx`). Phones and short windows keep the
+  card in flow below the planet. The DOM, deep links, print and no-JS are unchanged.
+
 ## 6. Mobile, accessibility, reduced motion
 
 - **Mobile:** DPR clamped to 1.5, reduced moon and ring detail, a lower-resolution
@@ -147,6 +154,12 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
   - Lighthouse a11y = 100.
 
 ## 7. QA
+
+**Lesson learned:** every automated check runs on SwiftShader (software GL), so a
+real-GPU-only failure shipped once. Two guards now exist: a black-frame check
+(`e2e/support/frame.ts`: the scene never draws pure black) in the visual, scene and
+smoke checks, including a natural-tier DPR 2 run; and `pnpm qa:gpu`, a headed
+fly-through on a real GPU that the owner runs before deploying.
 
 - **Playwright** projects: `desktop-chromium`, and `mobile` (an iPhone 13 viewport on
   Chromium; CI installs Chromium only).
@@ -165,7 +178,7 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
   under Lighthouse's 4× CPU throttle reads as ~150 s of blocking time — a property of
   software GL, not of real GPUs. Scene runtime is covered by `qa:smoke` (FPS on real
   GPUs) and the tier governor.
-- **`bundle:check`:** critical path ≤ 130 KB gz, lazy 3D chunk ≤ 260 KB gz, no leva. W2a
+- **`bundle:check`:** critical path ≤ 130 KB gz, lazy 3D chunk ≤ 235 KB gz, no leva. W2a
   flips `REQUIRE_3D_DEFAULT` to true once the scene exists.
 - **`scripts/qa-smoke.ts`:**
   - CI asserts that a WebGL context is acquired, that there are no console errors and
@@ -228,7 +241,7 @@ independently.
 
 | Risk                                                    | Mitigation                                                                       |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Bundle size (R3F, drei, postprocessing on top of three) | Lazy chunk after the capability probe; per-module drei imports; a 260 KB gz gate |
+| Bundle size (R3F, drei, postprocessing on top of three) | Lazy chunk after the capability probe; per-module drei imports; a 235 KB gz gate |
 | Mobile GPU                                              | `PerformanceMonitor` tiers, DPR cap, no SSAO                                     |
 | Visual-regression flakiness                             | Snapshots only under `?qa=1`; Linux-only baselines; a small diff tolerance       |
 | Topstep copy is mandate-only                            | Honest framing; refresh after the first deliverables                             |

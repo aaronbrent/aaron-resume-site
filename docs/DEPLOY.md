@@ -154,6 +154,25 @@ PORT=3000 pnpm start
 Open http://localhost:3000, scroll through the planets, then press Ctrl+C to stop
 the server.
 
+### Step 9b: Run the real-GPU check (recommended before every deploy)
+
+Automated tests in CI only have software graphics, so this is the one check
+that sees what your visitors' GPUs see. With the build from Step 9:
+
+```bash
+pnpm qa:gpu
+```
+
+A Chrome window opens and flies through the site by itself. Don't touch it; it
+takes about 30 seconds. It checks that a real GPU is in use, that every stop
+renders a full frame (no black areas), that there are no console errors and that
+it runs above 30 fps. It saves screenshots to `qa-gpu/` for you to look over. It
+should end with `✓ real-GPU check passed`.
+
+If it says Reduce Motion is on, turn it off in System Settings → Accessibility →
+Display for the check (with it on, the site intentionally shows the static
+version).
+
 ---
 
 ## Part 4: Deploy
@@ -242,10 +261,16 @@ Then run the smoke test with your URL:
 pnpm qa:smoke https://web-production-xxxx.up.railway.app
 ```
 
-It checks that the 3D scene renders, files arrive compressed, unknown paths return
-404, `/resume` and the PDF load, and there are no console errors. On your machine's
-real graphics card it also checks the frame rate stays above 30 fps. It should end
-with `✓ smoke test passed`.
+It checks that the 3D scene renders full frames, files arrive compressed, unknown
+paths return 404, `/resume` and the PDF load, and there are no console errors. On
+your machine's real graphics card it also checks the frame rate stays above 30 fps.
+It should end with `✓ smoke test passed`.
+
+For the full real-GPU fly-through against the live site:
+
+```bash
+pnpm qa:gpu https://web-production-xxxx.up.railway.app
+```
 
 ---
 

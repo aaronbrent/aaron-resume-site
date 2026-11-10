@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { blackFraction, MAX_BLACK_FRACTION } from "./support/frame";
 import { parkAtStop, PLANETS, QA_URL, waitForScene } from "./support/scene";
 
 /**
@@ -28,6 +29,8 @@ test.describe("scene visual regression", () => {
         content: "#main, footer { visibility: hidden !important; }",
       });
       await parkAtStop(page, k);
+      // A full frame first: a baseline can't bless a half-drawn one.
+      expect(await blackFraction(page)).toBeLessThan(MAX_BLACK_FRACTION);
       await expect(page).toHaveScreenshot(`stop-${k}-${name}.png`, {
         maxDiffPixelRatio: 0.02,
         animations: "disabled",

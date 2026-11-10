@@ -18,3 +18,6 @@ node_modules/
 .claude/worktrees/
 # Local visual UAT screenshots (never committed)
 /screens/
+
+# Real-GPU UAT screenshots (pnpm qa:gpu)
+/qa-gpu/

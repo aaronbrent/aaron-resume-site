@@ -13,6 +13,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
+import { blackFraction, MAX_BLACK_FRACTION } from "../e2e/support/frame.ts";
 
 const MIN_FPS = 30;
 const SAMPLE_MS = 3_000;
@@ -112,6 +113,27 @@ async function main() {
     if (softwareGl) pass(`fps ${fps.toFixed(1)} (not gated: software GL)`);
     else if (fps > MIN_FPS) pass(`fps ${fps.toFixed(1)} > ${MIN_FPS}`);
     else fail(`fps ${fps.toFixed(1)} ≤ ${MIN_FPS} over ${SAMPLE_MS / 1000} s`);
+
+    // Full frames at the hero and a planet (the real-GPU strip bug's signature).
+    for (const [label, stop] of [
+      ["hero", 0],
+      ["SoFi", 1],
+    ] as const) {
+      await page.evaluate((k) => {
+        const el = document.querySelectorAll<HTMLElement>(
+          "#main > header, #main > [data-planet]",
+        )[k];
+        window.scrollTo({
+          top: k === 0 ? 0 : el!.getBoundingClientRect().top + window.scrollY,
+          behavior: "instant",
+        });
+      }, stop);
+      await page.waitForTimeout(2_000);
+      const black = await blackFraction(page);
+      if (black < MAX_BLACK_FRACTION)
+        pass(`${label}: full frame (${(black * 100).toFixed(1)}% black)`);
+      else fail(`${label}: frame not fully drawn (${(black * 100).toFixed(1)}% black)`);
+    }
 
     const html = await (await page.request.get(`${base}/`)).text();
     const entry = /import\("(\/assets\/entry\.client-[^"]+\.js)"\)/.exec(html)?.[1];

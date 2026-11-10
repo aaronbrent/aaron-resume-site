@@ -26,6 +26,7 @@ postprocessing (lazy-loaded 3D layer over a complete semantic document).
 | `pnpm typecheck`            | React Router typegen + `tsc`                                        |
 | `pnpm lint` / `pnpm format` | ESLint (flat, jsx-a11y) / Prettier check                            |
 | `pnpm test`                 | Vitest unit tests (content, scroll progress, scene layout)          |
+| `pnpm qa:gpu [url]`         | Real-GPU fly-through on your machine (run before deploying)         |
 | `pnpm qa:smoke [url]`       | Smoke test: scene renders, compression, 404, no console errors      |
 | `pnpm test:e2e`             | Playwright + axe against the static build (build first)             |
 | `pnpm bundle:check`         | Critical-path / lazy-3D-chunk gzip budgets, no dev-only tools       |
