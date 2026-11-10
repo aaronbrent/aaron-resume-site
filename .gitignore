@@ -13,3 +13,6 @@ node_modules/
 # Editor / OS
 .DS_Store
 *.local
+
+# Local visual UAT screenshots (never committed)
+/screens/

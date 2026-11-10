@@ -1,6 +1,7 @@
 import { formatPeriod } from "~/content/format";
 import { contact, site } from "~/content/meta";
 import { planets } from "~/content/planets";
+import { SceneMount } from "~/scene/SceneMount";
 
 export function meta() {
   return [
@@ -44,7 +45,9 @@ export default function Index() {
         aria-hidden="true"
         data-print-hidden="true"
         className="pointer-events-none fixed inset-0 -z-10"
-      />
+      >
+        <SceneMount />
+      </div>
       <main id="main">
         <header className="flex min-h-svh flex-col justify-center px-6 py-16 md:px-16">
           <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-sunlight">

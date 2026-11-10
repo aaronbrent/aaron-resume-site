@@ -13,7 +13,7 @@ import { gzipSync } from "node:zlib";
 
 const SCENE_BUDGET_KB = 260;
 const CRITICAL_BUDGET_KB = 130;
-const REQUIRE_3D_DEFAULT = false;
+const REQUIRE_3D_DEFAULT = true;
 const require3d = process.env.REQUIRE_3D
   ? process.env.REQUIRE_3D === "1"
   : REQUIRE_3D_DEFAULT;
