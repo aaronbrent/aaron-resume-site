@@ -7,19 +7,6 @@ const launchOptions = chromiumExecutable
   ? { executablePath: chromiumExecutable }
   : undefined;
 
-// The v1 suites describe Tier 1 (PLAN-3D ADR-6) and stay green as the net:
-// they run with the map preference pre-seeded through the same localStorage
-// key the legend toggle writes. The dropin project covers Tier 2.
-const tier1Storage = {
-  cookies: [],
-  origins: [
-    {
-      origin: "http://localhost:4173",
-      localStorage: [{ name: "aaronellis:tier", value: "map" }],
-    },
-  ],
-};
-
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -30,21 +17,16 @@ export default defineConfig({
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
   },
+  // CI installs Chromium only, so the phone project runs an iPhone viewport
+  // on Chromium rather than WebKit.
   projects: [
     {
       name: "desktop-chromium",
-      use: { ...devices["Desktop Chrome"], launchOptions, storageState: tier1Storage },
-      testIgnore: /dropin\.spec\.ts/,
-    },
-    {
-      name: "mobile-chromium",
-      use: { ...devices["Pixel 7"], launchOptions, storageState: tier1Storage },
-      testIgnore: /dropin\.spec\.ts/,
-    },
-    {
-      name: "dropin-chromium",
       use: { ...devices["Desktop Chrome"], launchOptions },
-      testMatch: /dropin\.spec\.ts/,
+    },
+    {
+      name: "mobile",
+      use: { ...devices["iPhone 13"], defaultBrowserType: "chromium", launchOptions },
     },
   ],
   webServer: {
