@@ -44,8 +44,9 @@ orbit), `education.ts`, `skills.ts`, `meta.ts`. After editing content, run
 ## Deploy (Railway)
 
 The build is static. Railway runs `pnpm build` (Railpack, see `railway.toml`) and
-serves `build/client` with `pnpm start` (`sirv` on `$PORT`). Unknown paths render
-the app's 404 page.
+serves `build/client` with `pnpm start` (`scripts/serve.mjs`, on `$PORT`). HTML is
+served `no-cache`, hashed `/assets/` are cached for a year (immutable), and unknown
+paths get the app's 404 page with a real 404 status.
 
 1. Install the CLI and log in (one time, opens a browser):
 

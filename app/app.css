@@ -95,8 +95,8 @@
     transform: translateY(calc((1 - var(--reveal, 1)) * 1.5rem));
   }
 
-  /* Keyboard users always see what has focus. */
-  html[data-scene="on"] #main > header:focus-within > *,
+  /* Keyboard users always see the control that has focus. */
+  html[data-scene="on"] #main > header > *:focus-within,
   html[data-scene="on"] #main > [data-planet] > article:focus-within {
     opacity: 1;
     transform: none;
@@ -133,6 +133,11 @@
     align-items: flex-start;
     padding-top: 44svh;
   }
+}
+
+/* Keyboard stepping focuses whole panels (tabindex=-1); no ring for that. */
+#main > [tabindex="-1"]:focus {
+  outline: none;
 }
 
 /*

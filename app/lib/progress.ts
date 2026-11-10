@@ -57,11 +57,18 @@ export function stopAt(scrollY: number, ys: readonly number[]): number {
   return ys.length - 1;
 }
 
+export function getStopElements(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>(STOP_SELECTOR));
+}
+
 function measureStops() {
-  const els = Array.from(document.querySelectorAll<HTMLElement>(STOP_SELECTOR));
+  const els = getStopElements();
   const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
   stopYs = stopScrollPositions(
-    els.map((el) => ({ top: el.getBoundingClientRect().top + window.scrollY })),
+    // Whole pixels: scrollTo lands on integers, so stops must too.
+    els.map((el) => ({
+      top: Math.round(el.getBoundingClientRect().top + window.scrollY),
+    })),
     Math.max(0, maxScroll),
   );
 }
@@ -72,11 +79,17 @@ function measure(): number {
   return clamp01(stopAt(window.scrollY, stopYs) / stops);
 }
 
-/** Scroll position that parks stop `k` (0 = hero); for keyboard navigation. */
+/** Scroll position that parks stop `k` (0 = hero). */
 export function scrollYForStop(k: number): number {
   attach();
   if (stopYs.length === 0) return 0;
   return stopYs[Math.max(0, Math.min(stopYs.length - 1, k))]!;
+}
+
+/** Every stop's parked scroll position, hero first (keyboard navigation). */
+export function getStopPositions(): readonly number[] {
+  attach();
+  return stopYs;
 }
 
 /** Current fractional stop (0 = hero, i + 1 = planet i). */

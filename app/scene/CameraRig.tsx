@@ -38,7 +38,7 @@ export function CameraRig({ qa }: { qa: boolean }) {
     invalidate();
   }, [camera, portrait, invalidate]);
 
-  useEffect(() => installKeyboardNav(planets.length), []);
+  useEffect(() => installKeyboardNav(), []);
 
   useFrame((_, delta) => {
     path.poseInto(getProgress(), goalPos.current, goalTarget.current);

@@ -56,12 +56,15 @@ export default function Index() {
         data-scene-root
         aria-hidden="true"
         data-print-hidden="true"
-        className="pointer-events-none fixed inset-0 -z-10"
+        className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-lvh"
       >
         <SceneMount />
       </div>
       <main id="main">
-        <header className="flex min-h-svh flex-col justify-center px-6 py-16 md:px-16">
+        <header
+          tabIndex={-1}
+          className="flex min-h-svh flex-col justify-center px-6 py-16 md:px-16"
+        >
           <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-sunlight">
             A career in orbit
           </p>
@@ -91,6 +94,7 @@ export default function Index() {
             id={p.id}
             aria-labelledby={`${p.id}-title`}
             data-planet={p.id}
+            tabIndex={-1}
             className="flex min-h-svh items-center px-6 py-16 md:px-16"
           >
             <article className="max-w-xl rounded-2xl bg-void/80 p-6 shadow-lg ring-1 ring-starlight/10 backdrop-blur-sm md:p-8">

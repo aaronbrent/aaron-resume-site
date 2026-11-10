@@ -38,12 +38,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body className="font-body antialiased">
         {/* Pre-paint flags (no layout shift later): html.js gates JS-only
             styling; html.scene-likely picks the scene-friendly layout when
-            the 3D layer will probably load (motion OK, WebGL2 present). The
+            the 3D layer will probably load (motion OK, WebGL2, > 2 GB). The
             real probe still decides whether it does (SceneMount). */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(d){d.classList.add('js');try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&'WebGL2RenderingContext'in window)d.classList.add('scene-likely')}catch(e){}})(document.documentElement)",
+              "(function(d){d.classList.add('js');try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&'WebGL2RenderingContext'in window&&!(navigator.deviceMemory<=2))d.classList.add('scene-likely')}catch(e){}})(document.documentElement)",
           }}
         />
         <a

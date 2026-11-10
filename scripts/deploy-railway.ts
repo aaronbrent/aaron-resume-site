@@ -13,6 +13,7 @@
  *        override the default names.
  */
 import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 const BIN = process.env.RAILWAY_BIN ?? "railway";
 const PROJECT = process.env.RAILWAY_PROJECT ?? "aaron-ellis";
@@ -107,8 +108,14 @@ function main() {
     ? []
     : findServiceNames(tryRailway(["service", "list", "--json"]) ?? "");
   if (!services.includes(SERVICE)) {
-    railway(["add", "--service", SERVICE]);
-    console.log(`  created service "${SERVICE}"`);
+    // If `service list` isn't supported by this CLI version we can't tell,
+    // so a failing `add` (the service already exists) isn't fatal: linking
+    // below is what has to succeed.
+    if (tryRailway(["add", "--service", SERVICE]) !== null) {
+      console.log(`  created service "${SERVICE}"`);
+    } else {
+      console.log(`  "${SERVICE}" exists (or couldn't be created); linking it`);
+    }
   }
   railway(["service", "link", SERVICE]);
 
@@ -149,7 +156,7 @@ function main() {
 }
 
 // Run only when executed directly (the helpers are unit-tested).
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     main();
   } catch (error) {

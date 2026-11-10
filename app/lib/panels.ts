@@ -1,4 +1,4 @@
-import { subscribe } from "./progress";
+import { DWELL_FRACTION, getProgress, subscribe } from "./progress";
 
 /**
  * Panel choreography (docs/PLAN-STAR-SYSTEM.md §5, W4). Writes a `--reveal`
@@ -8,7 +8,7 @@ import { subscribe } from "./progress";
  */
 
 /** Fully shown while within this many stops of the planet (its dwell). */
-export const REVEAL_FULL = 0.25;
+export const REVEAL_FULL = DWELL_FRACTION / 2;
 /** Fully hidden beyond this many stops (mid-travel). */
 export const REVEAL_ZERO = 0.6;
 
@@ -28,7 +28,7 @@ export function installPanelFades(): () => void {
   );
   const stops = Math.max(1, panels.length - 1);
   const last: number[] = [];
-  return subscribe((progress) => {
+  const apply = (progress: number) => {
     const stop = progress * stops;
     panels.forEach((el, i) => {
       // Quantize so unchanged panels skip the style write.
@@ -37,5 +37,10 @@ export function installPanelFades(): () => void {
       last[i] = r;
       el.style.setProperty("--reveal", String(r));
     });
-  });
+  };
+  const unsubscribe = subscribe(apply);
+  // A deep link, reload or back/forward may have restored the scroll
+  // before we attached; reveal for where we already are.
+  apply(getProgress());
+  return unsubscribe;
 }

@@ -1,10 +1,12 @@
 /**
- * CI gate (docs/PLAN-STAR-SYSTEM.md §11): the 3D chunk stays lazy and within
- * budget, the critical path stays small, and dev-only tooling (leva) never
- * ships.   pnpm bundle:check   (requires a fresh `pnpm build`)
+ * CI gate (docs/PLAN-STAR-SYSTEM.md §7, §11). Requires a fresh `pnpm build`.
+ *   pnpm bundle:check
  *
- * Until W2a lands the scene there is no 3D chunk; that is a warning unless
- * REQUIRE_3D=1. W2a flips REQUIRE_3D_DEFAULT to true.
+ * - Critical path = every script the prerendered pages load up front (their
+ *   modulepreload links + entry imports), measured from the built HTML, not
+ *   guessed. It must stay ≤ 130 KB gz and must not contain three.js.
+ * - Lazy 3D chunk(s) = everything else that carries the renderer; ≤ 260 KB gz.
+ * - Dev-only tooling (leva) must not ship anywhere.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,55 +20,66 @@ const require3d = process.env.REQUIRE_3D
   ? process.env.REQUIRE_3D === "1"
   : REQUIRE_3D_DEFAULT;
 
-const dir = fileURLToPath(new URL("../build/client/assets", import.meta.url));
+const client = fileURLToPath(new URL("../build/client", import.meta.url));
+const assets = join(client, "assets");
+
+/** Asset file names a page loads up front. */
+export function criticalScripts(html: string): string[] {
+  const refs = [
+    ...html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="\/assets\/([^"]+\.js)"/g),
+    ...html.matchAll(/<script[^>]+src="\/assets\/([^"]+\.js)"/g),
+    ...html.matchAll(/import\(["']\/assets\/([^"']+\.js)["']\)/g),
+  ].map((m) => m[1]!);
+  return [...new Set(refs)];
+}
+
+const critical = new Set<string>();
+for (const page of ["index.html", "resume/index.html"]) {
+  for (const f of criticalScripts(readFileSync(join(client, page), "utf8")))
+    critical.add(f);
+}
+
 let sceneKb = 0;
 let criticalKb = 0;
-const levaChunks: string[] = [];
+const failures: string[] = [];
 const rows: string[] = [];
-for (const file of readdirSync(dir).sort()) {
+for (const file of readdirSync(assets).sort()) {
   if (!file.endsWith(".js")) continue;
-  const source = readFileSync(join(dir, file));
+  const source = readFileSync(join(assets, file));
   const kb = gzipSync(source, { level: 9 }).length / 1024;
-  // The lazy scene chunk(s) carry the renderer.
-  const isScene = source.includes("WebGLRenderer");
-  if (isScene) sceneKb += kb;
-  else criticalKb += kb;
+  const text = source.toString();
+  const hasThree = text.includes("WebGLRenderer");
+  const isCritical = critical.has(file);
+  if (isCritical) {
+    criticalKb += kb;
+    if (hasThree) failures.push(`three.js is on the critical path (${file})`);
+  } else if (hasThree) {
+    sceneKb += kb;
+  }
   // leva's store/panel identifiers; dev-only, must be tree-shaken out.
-  if (/\bleva\b|useControls\(|LevaPanel/.test(source.toString())) levaChunks.push(file);
-  rows.push(`  ${isScene ? "3D " : "    "}${kb.toFixed(1).padStart(7)} kB gz  ${file}`);
+  if (/\bleva\b|useControls\(|LevaPanel/.test(text)) {
+    failures.push(`leva (dev-only) found in production chunk ${file}`);
+  }
+  const tag = isCritical ? "crit" : hasThree ? " 3D " : "lazy";
+  rows.push(`  ${tag} ${kb.toFixed(1).padStart(7)} kB gz  ${file}`);
 }
 console.log(rows.join("\n"));
 console.log(
   `critical path ${criticalKb.toFixed(1)} kB gz (budget ${CRITICAL_BUDGET_KB}) · ` +
     `3D chunk ${sceneKb.toFixed(1)} kB gz (budget ${SCENE_BUDGET_KB})`,
 );
-let failed = false;
-if (sceneKb === 0) {
-  const msg = "no chunk containing WebGLRenderer found";
-  if (require3d) {
-    console.error(`✗ ${msg} — is the build fresh?`);
-    failed = true;
-  } else {
-    console.warn(
-      `⚠ ${msg} (expected until the scene lands; set REQUIRE_3D=1 to enforce)`,
-    );
-  }
+if (critical.size === 0) failures.push("no critical scripts found in the built HTML");
+if (sceneKb === 0 && require3d) {
+  failures.push("no lazy chunk containing WebGLRenderer found — is the build fresh?");
 }
 if (sceneKb > SCENE_BUDGET_KB) {
-  console.error(
-    `✗ 3D chunk over budget: ${sceneKb.toFixed(1)} > ${SCENE_BUDGET_KB} kB gz`,
-  );
-  failed = true;
+  failures.push(`3D chunk over budget: ${sceneKb.toFixed(1)} > ${SCENE_BUDGET_KB} kB gz`);
 }
 if (criticalKb > CRITICAL_BUDGET_KB) {
-  console.error(
-    `✗ critical path over budget: ${criticalKb.toFixed(1)} > ${CRITICAL_BUDGET_KB} kB gz`,
+  failures.push(
+    `critical path over budget: ${criticalKb.toFixed(1)} > ${CRITICAL_BUDGET_KB} kB gz`,
   );
-  failed = true;
 }
-if (levaChunks.length > 0) {
-  console.error(`✗ leva (dev-only) found in production chunks: ${levaChunks.join(", ")}`);
-  failed = true;
-}
-if (!failed) console.log("✓ bundle within budgets");
-process.exit(failed ? 1 : 0);
+for (const f of failures) console.error(`✗ ${f}`);
+if (failures.length === 0) console.log("✓ bundle within budgets");
+process.exit(failures.length ? 1 : 0);
