@@ -1,6 +1,6 @@
 # Plan: Pixar-style cartoon star system portfolio
 
-**Status:** Approved, amended after review (2026-11-10). W1 complete.
+**Status:** Approved, amended after review (2026-11-10). W1 and W7 complete.
 **Scope:** Complete rewrite of the portfolio site, replacing the ski trail-map / 3D-POV
 experience. The earlier plans are archived in `docs/archive/`.
 

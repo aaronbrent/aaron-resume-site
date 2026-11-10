@@ -40,6 +40,42 @@ All copy lives in `app/content/` — `planets.ts` (roles + each planet's look an
 orbit), `education.ts`, `skills.ts`, `meta.ts`. After editing content, run
 `pnpm build && pnpm pdf` so the downloadable PDF matches.
 
-## Deploy
+## Deploy (Railway)
 
-Railway, serving the static build — setup guide lands with W7 (see the plan).
+The build is static. Railway runs `pnpm build` (Railpack, see `railway.toml`) and
+serves `build/client` with `pnpm start` (`sirv` on `$PORT`). Unknown paths render
+the app's 404 page.
+
+1. Install the CLI and log in (one time, opens a browser):
+
+   ```bash
+   npm i -g @railway/cli
+   ```
+
+   ```bash
+   railway login
+   ```
+
+2. Deploy. This creates and links the `aaron-ellis` project and its `web` service
+   on the first run, sets `NODE_ENV=production`, builds, makes sure a
+   `*.up.railway.app` domain exists, and prints the live URL:
+
+   ```bash
+   pnpm run deploy:railway
+   ```
+
+   Use `pnpm run deploy:railway --dry-run` to see the commands without running
+   them. Use `pnpm run deploy:railway`, not `pnpm deploy`, which is a built-in
+   pnpm command.
+
+3. After the first deploy, set `site.url` in `app/content/meta.ts`,
+   `public/sitemap.xml` and `public/robots.txt` to the printed URL.
+
+4. Optional, later: attach a custom domain. The CLI prints the DNS record to add
+   at your registrar:
+
+   ```bash
+   railway domain example.com --service web
+   ```
+
+To check the production server locally: `pnpm build && PORT=3000 pnpm start`.
