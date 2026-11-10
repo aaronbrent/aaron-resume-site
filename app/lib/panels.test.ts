@@ -6,8 +6,11 @@ describe("revealAt", () => {
     expect(revealAt(2, 2)).toBe(1);
     expect(revealAt(2 + REVEAL_FULL, 2)).toBe(1);
     expect(revealAt(2 - REVEAL_FULL, 2)).toBe(1);
-    expect(revealAt(2.5, 2)).toBeGreaterThan(0);
-    expect(revealAt(2.5, 2)).toBeLessThan(1);
+    expect(revealAt(2.35, 2)).toBeGreaterThan(0);
+    expect(revealAt(2.35, 2)).toBeLessThan(1);
+    // Mid-flight is clear: neither neighbour's card shows.
+    expect(revealAt(2.5, 2)).toBe(0);
+    expect(revealAt(2.5, 3)).toBe(0);
     expect(revealAt(2 + REVEAL_ZERO, 2)).toBe(0);
     expect(revealAt(4, 2)).toBe(0);
   });

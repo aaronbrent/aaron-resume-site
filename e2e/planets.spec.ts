@@ -177,3 +177,65 @@ test.describe("social card", () => {
     expect(res.headers()["content-type"]).toContain("image/jpeg");
   });
 });
+
+test.describe("role cards float beside their planets", () => {
+  test("desktop: each card is fixed beside its planet, inside the viewport, never over it", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, "phones keep the card in flow below the planet");
+    test.setTimeout(90_000);
+    await page.goto(QA_URL);
+    await waitForScene(page);
+    const vp = page.viewportSize()!;
+    for (const [i, planet] of PLANETS.entries()) {
+      await parkAtStop(page, i + 1);
+      const card = page.locator(`#${planet.id} > article`);
+      await expect
+        .poll(() => card.evaluate((el) => getComputedStyle(el).position))
+        .toBe("fixed");
+      await expect
+        .poll(() => card.evaluate((el) => el.style.getPropertyValue("--planet-r")))
+        .not.toBe("");
+      const geo = await card.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const n = (p: string) => parseFloat(el.style.getPropertyValue(p));
+        return {
+          box: { x: r.x, y: r.y, w: r.width, h: r.height },
+          planet: { x: n("--planet-x"), y: n("--planet-y"), r: n("--planet-r") },
+          connector: parseFloat(getComputedStyle(el, "::after").width),
+        };
+      });
+      // Inside the viewport.
+      expect(geo.box.x).toBeGreaterThanOrEqual(0);
+      expect(geo.box.y).toBeGreaterThanOrEqual(0);
+      expect(geo.box.x + geo.box.w).toBeLessThanOrEqual(vp.width);
+      expect(geo.box.y + geo.box.h).toBeLessThanOrEqual(vp.height);
+      // Beside the planet, not over its disc.
+      const nx = Math.min(Math.max(geo.planet.x, geo.box.x), geo.box.x + geo.box.w);
+      const ny = Math.min(Math.max(geo.planet.y, geo.box.y), geo.box.y + geo.box.h);
+      const dist = Math.hypot(geo.planet.x - nx, geo.planet.y - ny);
+      expect(dist, `${planet.id} card overlaps its planet`).toBeGreaterThanOrEqual(
+        geo.planet.r - 1,
+      );
+      // The planet itself is on screen, and a connector reaches toward it.
+      expect(geo.planet.x).toBeGreaterThan(0);
+      expect(geo.planet.x).toBeLessThan(vp.width);
+      expect(geo.connector).toBeGreaterThan(0);
+    }
+  });
+
+  test("phones: the card stays in the document flow below the planet", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, "phone layout");
+    await page.goto(QA_URL);
+    await waitForScene(page);
+    await parkAtStop(page, 2);
+    const card = page.locator("#public > article");
+    expect(await card.evaluate((el) => getComputedStyle(el).position)).toBe("static");
+    const top = await card.evaluate((el) => el.getBoundingClientRect().top);
+    expect(top).toBeGreaterThan(page.viewportSize()!.height * 0.3);
+  });
+});

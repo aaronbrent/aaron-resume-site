@@ -10,7 +10,7 @@ import { DWELL_FRACTION, getProgress, subscribe } from "./progress";
 /** Fully shown while within this many stops of the planet (its dwell). */
 export const REVEAL_FULL = DWELL_FRACTION / 2;
 /** Fully hidden beyond this many stops (mid-travel). */
-export const REVEAL_ZERO = 0.6;
+export const REVEAL_ZERO = 0.45;
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));

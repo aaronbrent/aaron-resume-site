@@ -104,7 +104,7 @@ export default function Index() {
             tabIndex={-1}
             className="flex min-h-svh items-center px-6 py-16 md:px-16"
           >
-            <article className="max-w-xl rounded-2xl bg-void/80 p-6 shadow-lg ring-1 ring-starlight/10 backdrop-blur-sm md:p-8">
+            <article className="max-w-xl rounded-2xl bg-void/75 p-6 shadow-lg ring-1 ring-starlight/10 backdrop-blur-sm md:p-8">
               <p className="font-display text-sm font-semibold uppercase tracking-[0.25em] text-sunlight">
                 {p.nickname}
               </p>
