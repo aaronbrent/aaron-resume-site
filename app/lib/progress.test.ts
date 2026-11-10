@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { clamp01, dwellRange, planetIndexAt } from "./progress";
+import {
+  clamp01,
+  dwellRange,
+  planetIndexAt,
+  stopAt,
+  stopScrollPositions,
+} from "./progress";
 
 describe("planetIndexAt", () => {
   it("is -1 at the hero and walks the planets in order", () => {
@@ -35,5 +41,44 @@ describe("clamp01", () => {
     expect(clamp01(-0.5)).toBe(0);
     expect(clamp01(0.5)).toBe(0.5);
     expect(clamp01(1.5)).toBe(1);
+  });
+});
+
+describe("stopScrollPositions", () => {
+  it("centers each stop; the hero is always at 0", () => {
+    // hero 800, five 800px sections, viewport 800, footer after → max 4400
+    const boxes = [0, 800, 1600, 2400, 3200, 4000].map((top) => ({ top, height: 800 }));
+    expect(stopScrollPositions(boxes, 800, 4400)).toEqual([
+      0, 800, 1600, 2400, 3200, 4000,
+    ]);
+  });
+
+  it("centers tall sections on their middle and clamps to the scroll range", () => {
+    const ys = stopScrollPositions(
+      [
+        { top: 0, height: 700 },
+        { top: 700, height: 1100 }, // taller than the viewport
+        { top: 1800, height: 700 },
+      ],
+      700,
+      1800,
+    );
+    expect(ys).toEqual([0, 900, 1800]);
+  });
+});
+
+describe("stopAt", () => {
+  const ys = [0, 800, 1600, 2400];
+  it("interpolates between stop positions", () => {
+    expect(stopAt(0, ys)).toBe(0);
+    expect(stopAt(400, ys)).toBeCloseTo(0.5);
+    expect(stopAt(1600, ys)).toBe(2);
+    expect(stopAt(2000, ys)).toBeCloseTo(2.5);
+  });
+  it("holds at the last stop past the end (footer)", () => {
+    expect(stopAt(5000, ys)).toBe(3);
+  });
+  it("handles coincident stops", () => {
+    expect(stopAt(800, [0, 800, 800])).toBe(1);
   });
 });
