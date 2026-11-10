@@ -5,17 +5,20 @@ import { Lightformer } from "@react-three/drei/core/Lightformer";
 import { LightformerEnvironment } from "./LightformerEnvironment";
 
 /**
- * Key: the sun, a physical point light (decay 2). Intensity is tuned so the
- * mid orbits (r ≈ 13–25) sit near a "noon" exposure; the inner molten planet
- * runs hot (it's lava anyway) and the outer giant gets ~1/3 — the fills below
- * keep its night side from going black.
+ * Key: the sun, a point light at the origin — so every planet is lit from the
+ * sun's direction — but with NO distance falloff (decay 0). With physical
+ * decay 2, Topstep (r = 32) would get 1/16 of SoFi's (r = 8) light. Art
+ * direction wants every planet at the same "noon" exposure, the one W2b
+ * tuned its biomes against in the planet lab (irradiance 2.4 at each body,
+ * i.e. intensity 2.4·d² with decay 2). Day sides stay below the bloom
+ * threshold; only the sun and lava rifts glow.
  */
-const SUN_INTENSITY = 1100;
-const SUN_COLOR = "#ffd8a8";
+const SUN_IRRADIANCE = 2.4;
+const SUN_COLOR = "#fff1dc";
 
 /** Cool fill that always comes from just above the camera. */
 const FILL_COLOR = "#8fb2ff";
-const FILL_INTENSITY = 0.45;
+const FILL_INTENSITY = 0.28;
 
 const forward = new Vector3();
 
@@ -45,7 +48,7 @@ function CameraFill() {
  */
 function AmbientEnvironment() {
   return (
-    <LightformerEnvironment resolution={64} intensity={0.35}>
+    <LightformerEnvironment resolution={64} intensity={0.3}>
       <color attach="background" args={["#120e2a"]} />
       <Lightformer
         form="rect"
@@ -85,8 +88,8 @@ export function Lighting() {
       <pointLight
         position={[0, 0, 0]}
         color={SUN_COLOR}
-        intensity={SUN_INTENSITY}
-        decay={2}
+        intensity={SUN_IRRADIANCE}
+        decay={0}
       />
       <CameraFill />
       <AmbientEnvironment />
