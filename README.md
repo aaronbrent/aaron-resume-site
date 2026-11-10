@@ -44,6 +44,8 @@ orbit), `education.ts`, `skills.ts`, `meta.ts`. After editing content, run
 
 ## Deploy (Railway)
 
+Full step-by-step guide, with troubleshooting: [docs/DEPLOY.md](./docs/DEPLOY.md).
+
 The build is static. Railway runs `pnpm build` (Railpack, see `railway.toml`) and
 serves `build/client` with `pnpm start` (`scripts/serve.mjs`, on `$PORT`). HTML is
 served `no-cache`, hashed `/assets/` are cached for a year (immutable), and unknown
