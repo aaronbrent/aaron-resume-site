@@ -16,5 +16,5 @@ node_modules/
 
 # Agent worktrees
 .claude/worktrees/
-# Local UAT screenshots
+# Local visual UAT screenshots (never committed)
 /screens/
