@@ -1,3 +1,5 @@
+// Pulls in R3F's JSX intrinsic-element types (<mesh>, materials, …).
+import type {} from "@react-three/fiber";
 import type { PlanetBodyProps } from "../types";
 
 /**
