@@ -1,6 +1,6 @@
 # Plan: Pixar-style cartoon star system portfolio
 
-**Status:** Approved, amended after review (2026-11-10). W1 and W7 complete.
+**Status:** Approved, amended after review (2026-11-10). W1–W4 and W7 complete.
 **Scope:** Complete rewrite of the portfolio site, replacing the ski trail-map / 3D-POV
 experience. The earlier plans are archived in `docs/archive/`.
 
@@ -193,15 +193,15 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
 | #          | Worker               | Scope                                                                                                                                                                                                                       | Depends on   |
 | ---------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | **W1** ✅  | Cleanup + scaffold   | Delete the trail-map code; add R3F deps; `planets.ts`, `education.ts`, skills, meta; contracts (`app/scene/*`, `app/lib/progress.ts`, `app/lib/capability.ts`); stub `_index.tsx`; `/resume` on planets; regenerate the PDF | —            |
-| **W2a**    | Scene + lighting     | Lazy Canvas in `[data-scene-root]`, sun, orbit guides, environment, postprocessing                                                                                                                                          | W1           |
-| **W2b**    | Planet designer      | Five `PlanetBody` components (biome shaders) against `PlanetBodyProps`                                                                                                                                                      | W1           |
-| **W3**     | Camera + scroll      | Curve from `planetPosition()`, dwell/travel easing on `getProgress()`, keyboard navigation                                                                                                                                  | W2a          |
-| **W4**     | Panels + copy        | Fade the prerendered sections by `dwellRange()`; hero polish; typography and token pass                                                                                                                                     | W3           |
+| **W2a** ✅ | Scene + lighting     | Lazy Canvas in `[data-scene-root]`, sun, orbit guides, environment, postprocessing                                                                                                                                          | W1           |
+| **W2b** ✅ | Planet designer      | Five `PlanetBody` components (biome shaders) against `PlanetBodyProps`                                                                                                                                                      | W1           |
+| **W3** ✅  | Camera + scroll      | Curve from `planetPosition()`, dwell/travel easing on `getProgress()`, keyboard navigation                                                                                                                                  | W2a          |
+| **W4** ✅  | Panels + copy        | Fade the prerendered sections by `dwellRange()`; hero polish; typography and token pass                                                                                                                                     | W3           |
 | **Gate 1** | Reviewer             | Diffs and self-tests from W1–W4                                                                                                                                                                                             | W1–W4        |
 | **W5**     | Mobile tune + poster | `PerformanceMonitor` tiers; `scripts/render-poster.ts` (`?qa=1`) for the poster, the fallback and the OG image                                                                                                              | W2a, W2b, W4 |
 | **W6**     | QA automation        | Remaining Playwright specs, Linux visual baselines, Lighthouse config, smoke script                                                                                                                                         | W4, W5       |
 | **Gate 2** | Reviewer             | Diffs and self-tests from W5–W6                                                                                                                                                                                             | W5–W6        |
-| **W7**     | Railway config       | `railway.toml`, `start`, the deploy script, the README guide, removing the Cloudflare job (can start any time after W1)                                                                                                     | W1           |
+| **W7** ✅  | Railway config       | `railway.toml`, `start`, the deploy script, the README guide, removing the Cloudflare job (can start any time after W1)                                                                                                     | W1           |
 | **Deploy** | Aaron (local)        | `railway login` → `pnpm run deploy:railway` → paste the URL back                                                                                                                                                            | Gate 2, W7   |
 | **Final**  | Reviewer             | Smoke-test the live URL; check against the Done criteria                                                                                                                                                                    | Deploy       |
 

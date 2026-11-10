@@ -3,10 +3,11 @@
  *
  * Native document scroll drives the flight — no drei ScrollControls. The
  * document's stops are the hero header and one section per planet (children
- * of #main). Each stop has a scroll position where it is centered in the
- * viewport; scroll is mapped piecewise-linearly between those, so stop k is
- * exactly on screen at stop k regardless of section heights (tall mobile
- * sections, the contact footer after the last planet). `progress ∈ [0, 1]`
+ * of #main, each at least one viewport tall). A stop is parked when its
+ * section's top meets the viewport's top; scroll is mapped piecewise-
+ * linearly between those positions, so stop k is exactly on screen at stop
+ * k regardless of section heights (tall mobile sections, the contact footer
+ * after the last planet). `progress ∈ [0, 1]`
  * is stop / planetCount: 0 = hero, (i + 1) / planetCount = planet i.
  *
  * Read it in `useFrame` via `getProgress()` (never React state), or
@@ -26,19 +27,19 @@ export const STOP_SELECTOR = "#main > header, #main > [data-planet]";
 let stopYs: number[] = [];
 
 /**
- * Scroll position at which each stop element is centered in the viewport
- * (tall elements: their middle at the viewport's middle), clamped to the
- * scrollable range and kept non-decreasing.
+ * Scroll position at which each stop element is parked: its top at the
+ * viewport's top (the hero at 0), clamped to the scrollable range and kept
+ * non-decreasing. Sections are ≥ 1 viewport tall, so a parked section fills
+ * the screen; tall ones (phones) show their top, where the planet is framed.
  */
 export function stopScrollPositions(
-  boxes: readonly { top: number; height: number }[],
-  viewport: number,
+  boxes: readonly { top: number }[],
   maxScroll: number,
 ): number[] {
   let floor = 0;
   return boxes.map((b, i) => {
-    const centered = i === 0 ? 0 : b.top + (b.height - viewport) / 2;
-    const y = Math.min(maxScroll, Math.max(floor, centered));
+    const top = i === 0 ? 0 : b.top;
+    const y = Math.min(maxScroll, Math.max(floor, top));
     floor = y;
     return y;
   });
@@ -60,11 +61,7 @@ function measureStops() {
   const els = Array.from(document.querySelectorAll<HTMLElement>(STOP_SELECTOR));
   const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
   stopYs = stopScrollPositions(
-    els.map((el) => ({
-      top: el.getBoundingClientRect().top + window.scrollY,
-      height: el.offsetHeight,
-    })),
-    window.innerHeight,
+    els.map((el) => ({ top: el.getBoundingClientRect().top + window.scrollY })),
     Math.max(0, maxScroll),
   );
 }

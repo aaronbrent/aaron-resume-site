@@ -45,25 +45,18 @@ describe("clamp01", () => {
 });
 
 describe("stopScrollPositions", () => {
-  it("centers each stop; the hero is always at 0", () => {
-    // hero 800, five 800px sections, viewport 800, footer after → max 4400
-    const boxes = [0, 800, 1600, 2400, 3200, 4000].map((top) => ({ top, height: 800 }));
-    expect(stopScrollPositions(boxes, 800, 4400)).toEqual([
-      0, 800, 1600, 2400, 3200, 4000,
-    ]);
+  it("parks each section top at the viewport top; the hero is always at 0", () => {
+    const boxes = [0, 800, 1600, 2400, 3200, 4000].map((top) => ({ top }));
+    expect(stopScrollPositions(boxes, 4400)).toEqual([0, 800, 1600, 2400, 3200, 4000]);
   });
 
-  it("centers tall sections on their middle and clamps to the scroll range", () => {
-    const ys = stopScrollPositions(
-      [
-        { top: 0, height: 700 },
-        { top: 700, height: 1100 }, // taller than the viewport
-        { top: 1800, height: 700 },
-      ],
-      700,
-      1800,
-    );
-    expect(ys).toEqual([0, 900, 1800]);
+  it("clamps to the scroll range and never goes backwards", () => {
+    expect(stopScrollPositions([{ top: 5 }, { top: 700 }, { top: 1900 }], 1800)).toEqual([
+      0, 700, 1800,
+    ]);
+    expect(stopScrollPositions([{ top: 0 }, { top: 900 }, { top: 800 }], 2000)).toEqual([
+      0, 900, 900,
+    ]);
   });
 });
 

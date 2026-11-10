@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { formatPeriod } from "~/content/format";
 import { contact, site } from "~/content/meta";
 import { planets } from "~/content/planets";
+import { installPanelFades } from "~/lib/panels";
 import { SceneMount } from "~/scene/SceneMount";
 
 export function meta() {
@@ -38,6 +40,7 @@ const link = "text-nebula underline underline-offset-2 hover:text-starlight";
  * on its own.
  */
 export default function Index() {
+  useEffect(() => installPanelFades(), []);
   return (
     <>
       <div
@@ -66,10 +69,10 @@ export default function Index() {
             </a>
           </p>
           <p
-            className="mt-16 text-sm uppercase tracking-[0.2em] text-dust"
+            className="scroll-cue mt-16 text-sm uppercase tracking-[0.2em] text-dust"
             aria-hidden="true"
           >
-            Scroll ↓
+            Scroll <span className="scroll-cue-arrow inline-block">↓</span>
           </p>
         </header>
 

@@ -5,12 +5,12 @@ import { planets } from "~/content/planets";
 import { subscribe } from "~/lib/progress";
 import { DPR_MAX, isQaMode } from "./constants";
 import { DustMotes } from "./DustMotes";
+import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { planetPosition } from "./layout";
 import { Lighting } from "./Lighting";
 import { Nebula } from "./Nebula";
 import { OrbitGuides } from "./OrbitGuides";
-import { OverviewCamera } from "./OverviewCamera";
 import { PlanetBody } from "./planets";
 import { SceneCanvas } from "./SceneCanvas";
 import { Sun } from "./Sun";
@@ -30,7 +30,7 @@ const GL: RenderProps<HTMLCanvasElement>["gl"] = {
   powerPreference: "high-performance",
   stencil: false,
 };
-/** Initial camera only; OverviewCamera (W3: the rig) owns the pose. */
+/** Initial camera only; CameraRig owns the pose and lens. */
 const CAMERA: RenderProps<HTMLCanvasElement>["camera"] = {
   fov: 38,
   near: 0.1,
@@ -80,7 +80,7 @@ export default function Scene({ onFirstFrame, onFail }: SceneProps) {
       onContextLost={onFail}
     >
       <color attach="background" args={["#07061a"]} />
-      <OverviewCamera />
+      <CameraRig qa={qa} />
       <Nebula />
       <DustMotes qa={qa} />
       <Lighting />

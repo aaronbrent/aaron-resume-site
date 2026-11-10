@@ -82,3 +82,55 @@
   line-gap-override: 0%;
   size-adjust: 80.75%;
 }
+
+/*
+ * Panel choreography (W4). --reveal comes from app/lib/panels.ts; it only
+ * takes effect once the 3D scene has drawn (html[data-scene="on"]), so
+ * no-JS, reduced-motion and no-WebGL visitors always see every panel.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-scene="on"] #main > header > *,
+  html[data-scene="on"] #main > [data-planet] > article {
+    opacity: var(--reveal, 1);
+    transform: translateY(calc((1 - var(--reveal, 1)) * 1.5rem));
+  }
+
+  /* Keyboard users always see what has focus. */
+  html[data-scene="on"] #main > header:focus-within > *,
+  html[data-scene="on"] #main > [data-planet] > article:focus-within {
+    opacity: 1;
+    transform: none;
+  }
+
+  .scroll-cue-arrow {
+    animation: scroll-cue 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes scroll-cue {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(0.35rem);
+  }
+}
+
+/*
+ * Phones with the scene: the camera frames each planet in the top of the
+ * frame (camera-path portrait framing), so panels sit below it. Keyed off
+ * the pre-paint html.scene-likely flag, never the async probe, so the
+ * layout never shifts after first paint.
+ */
+@media (max-width: 767.98px) {
+  html.scene-likely #main > header {
+    justify-content: flex-end;
+    padding-bottom: 14svh;
+  }
+
+  html.scene-likely #main > [data-planet] {
+    align-items: flex-start;
+    padding-top: 44svh;
+  }
+}

@@ -74,14 +74,16 @@ describe("camera path", () => {
     expect(tgt.distanceTo(v(pose.target))).toBeLessThan(1e-9);
   });
 
-  it("portrait framing keeps the same parked positions, aims lower", () => {
-    const portrait = buildCameraPath(planets, { portrait: true });
-    const i = 2;
-    const center = dwellRange(i, planets.length).center;
-    const land = path.poseAt(center);
-    const port = portrait.poseAt(center);
-    expect(v(land.position).distanceTo(v(port.position))).toBeLessThan(1e-6);
-    expect(port.target[1]).toBeLessThan(land.target[1]);
+  it("portrait framing pulls back and aims lower (planet above the panel)", () => {
+    for (const p of planets) {
+      const planet = v(planetPosition(p.visual));
+      const land = dwellPose(p);
+      const port = dwellPose(p, { portrait: true });
+      expect(v(port.position).distanceTo(planet)).toBeGreaterThan(
+        v(land.position).distanceTo(planet),
+      );
+      expect(port.target[1]).toBeLessThan(land.target[1]);
+    }
   });
 });
 

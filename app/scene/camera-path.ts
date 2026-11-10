@@ -38,7 +38,8 @@ export function dwellPose(planet: PathPlanet, opts: CameraPathOptions = {}): Cam
   // Sit on the sun side so the lit face is toward the camera, swung ~35°
   // off the sun line so the terminator reads as a soft rounded edge.
   const swing = towardSun.clone().applyAxisAngle(UP, 0.6);
-  const distance = s * 4.2 + 1.2;
+  // Portrait frames are narrow: pull back so moons and rings fit.
+  const distance = (s * 4.2 + 1.2) * (opts.portrait ? 1.3 : 1);
   const position = p
     .clone()
     .addScaledVector(swing, distance)
@@ -48,15 +49,31 @@ export function dwellPose(planet: PathPlanet, opts: CameraPathOptions = {}): Cam
   const view = p.clone().sub(position).normalize();
   const right = view.clone().cross(UP).normalize();
   const target = opts.portrait
-    ? p.clone().addScaledVector(UP, -s * 1.3)
+    ? p.clone().addScaledVector(UP, -s * 1.6)
     : p.clone().addScaledVector(right, -s * 1.4);
   return { position: position.toArray() as Vec3, target: target.toArray() as Vec3 };
 }
 
-/** The hero pose: close on the sun, slightly above, sun filling the frame. */
+/**
+ * The hero pose: close on the sun, slightly above, sun filling most of the
+ * frame. Aimed off-center like the planet shots so the sun sits beside the
+ * hero text (landscape: right half) or above it (portrait).
+ */
 export function heroPose(opts: CameraPathOptions = {}): CameraPose {
-  const d = opts.portrait ? SUN_RADIUS * 5.2 : SUN_RADIUS * 3.6;
-  return { position: [0, SUN_RADIUS * 0.6, d], target: [0, 0, 0] };
+  return opts.portrait
+    ? {
+        position: [0, SUN_RADIUS * 0.6, SUN_RADIUS * 5.6],
+        target: [0, -SUN_RADIUS * 1.5, 0],
+      }
+    : {
+        position: [0, SUN_RADIUS * 0.6, SUN_RADIUS * 3.9],
+        target: [-SUN_RADIUS * 0.9, 0, 0],
+      };
+}
+
+/** Vertical field of view for the rig (degrees). */
+export function rigFov(opts: CameraPathOptions = {}): number {
+  return opts.portrait ? 52 : 38;
 }
 
 function midpoint(a: CameraPose, b: CameraPose, lift: number): CameraPose {
