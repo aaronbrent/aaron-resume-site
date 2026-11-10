@@ -39,13 +39,19 @@ export function Effects({ onFirstFrame, multisampling = 4, bloom = true }: Effec
 
   return (
     <EffectComposer ref={composer} multisampling={multisampling}>
-      <Bloom
-        mipmapBlur
-        luminanceThreshold={1}
-        luminanceSmoothing={0.25}
-        intensity={bloom ? 1.3 : 0}
-        radius={0.8}
-      />
+      {/* Unmounted, not zeroed: Bloom's luminance + blur passes run at any
+          intensity (gate 2, finding 3). */}
+      {bloom ? (
+        <Bloom
+          mipmapBlur
+          luminanceThreshold={1}
+          luminanceSmoothing={0.25}
+          intensity={1.3}
+          radius={0.8}
+        />
+      ) : (
+        <></>
+      )}
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette offset={0.32} darkness={0.55} />
     </EffectComposer>

@@ -83,7 +83,13 @@ function startingTier(): Tier {
 /** Steps quality down (never up) when the frame rate can't hold (§6). */
 function QualityGovernor({ onDrop }: { onDrop: () => void }) {
   const governor = useRef(new FpsGovernor());
+  useEffect(() => {
+    const onVisibility = () => governor.current.reset();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
   useFrame((_, delta) => {
+    if (document.hidden) return;
     if (governor.current.sample(delta)) onDrop();
   });
   return null;

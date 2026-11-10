@@ -71,7 +71,7 @@ async function main() {
       await page.addStyleTag({
         content: v.text
           ? // Social card: name + positioning only; links and the cue are noise.
-            "#main > header > p:nth-of-type(3), .scroll-cue { visibility: hidden !important; }"
+            "[data-hero-plate] > p:nth-of-type(3), .scroll-cue { visibility: hidden !important; }"
           : "#main, footer { visibility: hidden !important; }",
       });
       await page.waitForTimeout(1500);

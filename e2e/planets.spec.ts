@@ -21,6 +21,7 @@ test.describe("flight through the system (scene on)", () => {
       await parkAtStop(page, i + 1);
       const card = page.locator(`#${planet.id} > article`);
       await expect(card).toBeInViewport();
+      await expect(card.getByRole("heading", { level: 2 })).toHaveText(planet.org);
       await expect(card).toContainText(planet.role);
       await expect(card).toContainText(planet.period);
       // The panel is fully revealed at its stop…
@@ -38,8 +39,9 @@ test.describe("flight through the system (scene on)", () => {
   });
 
   test("the hero fades as the camera leaves the sun, and returns", async ({ page }) => {
-    const name = page.getByRole("heading", { level: 1 });
-    const opacity = () => name.evaluate((el) => Number(getComputedStyle(el).opacity));
+    // The fade applies to the hero plate (opacity isn't inherited, so read it there).
+    const plate = page.locator("[data-hero-plate]");
+    const opacity = () => plate.evaluate((el) => Number(getComputedStyle(el).opacity));
     await expect.poll(opacity).toBeGreaterThan(0.99);
     await parkAtStop(page, 1);
     await expect.poll(opacity).toBeLessThan(0.01);
@@ -102,7 +104,7 @@ test.describe("flight through the system (scene on)", () => {
     await expect
       .poll(() =>
         page.locator('#main > header a[href="/resume"]').evaluate((el) => {
-          return Number(getComputedStyle(el.closest("p")!).opacity);
+          return Number(getComputedStyle(el.closest("[data-hero-plate]")!).opacity);
         }),
       )
       .toBeGreaterThan(0.99);

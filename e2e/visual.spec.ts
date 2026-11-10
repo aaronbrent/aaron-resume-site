@@ -17,6 +17,8 @@ test.describe("scene visual regression", () => {
   test.describe.configure({ mode: "serial" });
   // 1× keeps baselines small and fast; the phone viewport/framing is kept.
   test.use({ deviceScaleFactor: 1 });
+  // Scene load + a stable screenshot on a small CI runner's software GL.
+  test.describe.configure({ timeout: 60_000 });
 
   for (const [k, name] of STOPS.entries()) {
     test(`${(k * 20).toString().padStart(3, "0")}% — ${name}`, async ({ page }) => {

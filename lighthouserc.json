@@ -1,12 +1,10 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "./build/client",
-      "url": ["http://localhost/", "http://localhost/resume/"],
+      "url": ["http://localhost:4810/", "http://localhost:4810/resume/"],
       "numberOfRuns": 3,
-      "settings": {
-        "budgetsPath": "./budgets.json"
-      }
+      "startServerCommand": "node scripts/serve.mjs --port 4810",
+      "startServerReadyPattern": "Serving build/client"
     },
     "assert": {
       "assertions": {
@@ -50,6 +48,18 @@
           "error",
           {
             "maxNumericValue": 122880
+          }
+        ],
+        "resource-summary:image:size": [
+          "error",
+          {
+            "maxNumericValue": 122880
+          }
+        ],
+        "resource-summary:total:size": [
+          "error",
+          {
+            "maxNumericValue": 921600
           }
         ]
       }

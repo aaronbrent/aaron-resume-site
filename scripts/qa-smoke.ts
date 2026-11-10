@@ -20,15 +20,12 @@ const DRIVER_NOISE = /GPU stall due to ReadPixels|GL Driver Message/;
 
 async function serveBuild(): Promise<{ url: string; server: ChildProcess }> {
   const port = 4800 + Math.floor(Math.random() * 400);
-  const sirv = fileURLToPath(new URL("../node_modules/sirv-cli/bin.js", import.meta.url));
-  const server = spawn(
-    process.execPath,
-    [sirv, "build/client", "--port", String(port), "--quiet"],
-    {
-      cwd: fileURLToPath(new URL("..", import.meta.url)),
-      stdio: "ignore",
-    },
-  );
+  // The production server itself (pnpm start): headers and compression too.
+  const serve = fileURLToPath(new URL("./serve.mjs", import.meta.url));
+  const server = spawn(process.execPath, [serve, "--port", String(port)], {
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+    stdio: "ignore",
+  });
   const url = `http://localhost:${port}`;
   for (let i = 0; i < 50; i++) {
     try {
@@ -115,6 +112,23 @@ async function main() {
     if (softwareGl) pass(`fps ${fps.toFixed(1)} (not gated: software GL)`);
     else if (fps > MIN_FPS) pass(`fps ${fps.toFixed(1)} > ${MIN_FPS}`);
     else fail(`fps ${fps.toFixed(1)} ≤ ${MIN_FPS} over ${SAMPLE_MS / 1000} s`);
+
+    const html = await (await page.request.get(`${base}/`)).text();
+    const entry = /import\("(\/assets\/entry\.client-[^"]+\.js)"\)/.exec(html)?.[1];
+    if (entry) {
+      const r = await page.request.get(`${base}${entry}`, {
+        headers: { "Accept-Encoding": "br, gzip" },
+      });
+      const enc = r.headers()["content-encoding"];
+      if (enc === "br" || enc === "gzip") pass(`scripts served compressed (${enc})`);
+      else fail(`scripts served uncompressed (content-encoding: ${enc ?? "none"})`);
+    } else {
+      fail("couldn't find the entry script in /");
+    }
+
+    const missing = await page.request.get(`${base}/no-such-page`);
+    if (missing.status() === 404) pass("unknown paths → 404");
+    else fail(`unknown paths → ${missing.status()} (expected 404)`);
 
     for (const path of ["/resume", "/aaron-ellis-resume.pdf"]) {
       const r = await page.request.get(`${base}${path}`);

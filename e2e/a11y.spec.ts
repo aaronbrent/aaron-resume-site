@@ -89,3 +89,42 @@ test.describe("document structure", () => {
     expect(parsed.name).toBe("Aaron Ellis");
   });
 });
+
+test.describe("hero readability", () => {
+  // axe can't judge text over images or canvas (it reports "incomplete"),
+  // so assert the structure that guarantees contrast instead: every piece
+  // of hero text sits on the opaque plate, whatever is drawn behind it.
+  for (const reducedMotion of ["no-preference", "reduce"] as const) {
+    test(`hero text sits on an opaque plate (${reducedMotion} motion)`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion });
+      await page.goto("/");
+      const plate = page.locator("[data-hero-plate]");
+      // Tailwind v4 computes bg-void/80 as e.g. "oklab(… / 0.8)" or "rgba(…, 0.8)".
+      const alpha = await plate.evaluate((el) => {
+        const bg = getComputedStyle(el).backgroundColor;
+        const slash = /\/\s*([\d.]+)%?\s*\)$/.exec(bg);
+        if (slash) return Number(slash[1]);
+        const rgba = /^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/.exec(bg);
+        if (rgba) return Number(rgba[1]);
+        return /^(rgb|oklab|oklch|color)\(/.test(bg) ? 1 : 0;
+      });
+      expect(alpha).toBeGreaterThanOrEqual(0.8);
+      const box = (await plate.boundingBox())!;
+      for (const el of await page.locator("#main > header :is(h1, p)").all()) {
+        const b = (await el.boundingBox())!;
+        expect(b.x).toBeGreaterThanOrEqual(box.x - 0.5);
+        expect(b.y).toBeGreaterThanOrEqual(box.y - 0.5);
+        expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
+        expect(b.y + b.height).toBeLessThanOrEqual(box.y + box.height + 0.5);
+      }
+    });
+  }
+
+  test("unknown paths render the 404 page", async ({ page }) => {
+    await page.goto("/no-such-page");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("404");
+    await expect(page).toHaveTitle(/Not found/);
+  });
+});

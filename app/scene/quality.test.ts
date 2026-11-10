@@ -51,8 +51,21 @@ describe("FpsGovernor", () => {
     expect(run(g, MIN_FPS - 15, 1.4)).toBe(false); // still warming up
     expect(run(g, MIN_FPS - 15, 3)).toBe(true);
   });
-  it("ignores background-tab stalls", () => {
+  it("steps down on very slow devices (sub-2 fps frames count)", () => {
+    const g = new FpsGovernor(1.5, 2);
+    let tripped = false;
+    for (let i = 0; i < 10; i++) tripped = g.sample(1.1) || tripped;
+    expect(tripped).toBe(true);
+  });
+
+  it("keeps the tier on a display capped at 30 Hz", () => {
+    expect(run(new FpsGovernor(), 30, 10)).toBe(false);
+  });
+
+  it("reset() discards a window spoiled by a hidden tab", () => {
     const g = new FpsGovernor(0, 2);
-    for (let i = 0; i < 10; i++) expect(g.sample(2)).toBe(false);
+    g.sample(1.9); // the tab was hidden mid-window
+    g.reset();
+    expect(run(g, 60, 3)).toBe(false);
   });
 });

@@ -57,8 +57,12 @@ export function forcedTier(search: string): Tier | null {
   return null;
 }
 
-/** Below this sustained frame rate the governor steps down a tier. */
-export const MIN_FPS = 40;
+/**
+ * Below this sustained frame rate the governor steps down a tier. Just under
+ * 30, so a display or power mode capped at 30 Hz (iOS Low Power Mode) keeps
+ * its tier instead of always sinking to the bottom.
+ */
+export const MIN_FPS = 27;
 
 /**
  * Frame-rate governor state machine. Feed it frame deltas (seconds); it
@@ -74,10 +78,18 @@ export class FpsGovernor {
     private readonly window = 2,
   ) {}
 
+  /**
+   * Discards the current window. Call when the page was hidden: a background
+   * tab's long frames say nothing about the GPU. (Long frames are otherwise
+   * counted — on the slowest devices they are the signal.)
+   */
+  reset(): void {
+    this.elapsed = 0;
+    this.frames = 0;
+  }
+
   /** Returns true when the last window averaged below MIN_FPS. */
   sample(delta: number): boolean {
-    // A long frame from a background tab says nothing about the GPU.
-    if (delta > 0.5) return false;
     if (this.warm < this.warmup) {
       this.warm += delta;
       return false;

@@ -5,7 +5,9 @@
  * - Critical path = every script the prerendered pages load up front (their
  *   modulepreload links + entry imports), measured from the built HTML, not
  *   guessed. It must stay ≤ 130 KB gz and must not contain three.js.
- * - Lazy 3D chunk(s) = everything else that carries the renderer; ≤ 260 KB gz.
+ * - Lazy chunks = every other script (today: the Scene chunk). They all
+ *   count toward the 3D budget, ≤ 260 KB gz, so a future split of drei or
+ *   postprocessing into its own async chunk can't slip past both budgets.
  * - Dev-only tooling (leva) must not ship anywhere.
  */
 import { readdirSync, readFileSync } from "node:fs";
@@ -41,6 +43,7 @@ for (const page of ["index.html", "resume/index.html"]) {
 
 let sceneKb = 0;
 let criticalKb = 0;
+let sawRenderer = false;
 const failures: string[] = [];
 const rows: string[] = [];
 for (const file of readdirSync(assets).sort()) {
@@ -53,8 +56,9 @@ for (const file of readdirSync(assets).sort()) {
   if (isCritical) {
     criticalKb += kb;
     if (hasThree) failures.push(`three.js is on the critical path (${file})`);
-  } else if (hasThree) {
+  } else {
     sceneKb += kb;
+    if (hasThree) sawRenderer = true;
   }
   // leva's store/panel identifiers; dev-only, must be tree-shaken out.
   if (/\bleva\b|useControls\(|LevaPanel/.test(text)) {
@@ -66,10 +70,10 @@ for (const file of readdirSync(assets).sort()) {
 console.log(rows.join("\n"));
 console.log(
   `critical path ${criticalKb.toFixed(1)} kB gz (budget ${CRITICAL_BUDGET_KB}) · ` +
-    `3D chunk ${sceneKb.toFixed(1)} kB gz (budget ${SCENE_BUDGET_KB})`,
+    `lazy 3D ${sceneKb.toFixed(1)} kB gz (budget ${SCENE_BUDGET_KB})`,
 );
 if (critical.size === 0) failures.push("no critical scripts found in the built HTML");
-if (sceneKb === 0 && require3d) {
+if (!sawRenderer && require3d) {
   failures.push("no lazy chunk containing WebGLRenderer found — is the build fresh?");
 }
 if (sceneKb > SCENE_BUDGET_KB) {

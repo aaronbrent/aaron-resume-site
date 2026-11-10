@@ -1,6 +1,6 @@
 # Plan: Pixar-style cartoon star system portfolio
 
-**Status:** Approved, amended after review (2026-11-10). W1–W5 and W7 complete.
+**Status:** Approved, amended after review (2026-11-10). W1–W7 and review gates 1–2 complete; deploy is run by Aaron.
 **Scope:** Complete rewrite of the portfolio site, replacing the ski trail-map / 3D-POV
 experience. The earlier plans are archived in `docs/archive/`.
 
@@ -47,7 +47,7 @@ Catmull-Rom curve; each planet's panel fades in as the camera approaches.
 
 - **Kept:** React Router 7, three.js, Tailwind v4, Playwright, Lighthouse CI, pnpm.
 - **Added:** `@react-three/fiber` 9, `@react-three/drei` 10 (`Environment`,
-  `Lightformer`, `PerformanceMonitor`, imported per module), `@react-three/postprocessing`
+  `Lightformer`, imported per module), `@react-three/postprocessing`
   3 and `postprocessing`.
 - **Dev only:** `leva` behind `import.meta.env.DEV` with a dynamic import.
   `bundle:check` fails if it ships.
@@ -110,8 +110,9 @@ circular orbit guides, one per planet.
 - SMAA, or `multisampling` on the `EffectComposer`.
 - **No SSAO:** it adds almost nothing here at a high cost. Fake the contact shading in
   the planet shaders with a fresnel rim and a terminator wrap.
-- Quality steps down through drei `PerformanceMonitor` and a DPR × screen-area budget,
-  not a width cutoff.
+- Quality steps down through a small custom FPS governor (`app/scene/quality.ts`; drei
+  `PerformanceMonitor` was dropped for bundle size) and a DPR × screen-area budget, not
+  a width cutoff.
 
 ### Background
 
@@ -136,7 +137,7 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
 ## 6. Mobile, accessibility, reduced motion
 
 - **Mobile:** DPR clamped to 1.5, reduced moon and ring detail, a lower-resolution
-  environment map, and postprocessing gated by `PerformanceMonitor`.
+  environment map, and postprocessing gated by the FPS governor's quality tiers.
 - **Reduced motion, no WebGL or no JS:** no canvas. A static poster PNG sits behind the
   same prerendered sections. There is no separate card layout.
 - **Accessibility:**
@@ -204,7 +205,7 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
 | **W4** ✅  | Panels + copy        | Fade the prerendered sections by `dwellRange()`; hero polish; typography and token pass                                                                                                                                     | W3           |
 | **Gate 1** | Reviewer             | Diffs and self-tests from W1–W4                                                                                                                                                                                             | W1–W4        |
 | **W5** ✅  | Mobile tune + poster | `PerformanceMonitor` tiers; `scripts/render-poster.ts` (`?qa=1`) for the poster, the fallback and the OG image                                                                                                              | W2a, W2b, W4 |
-| **W6**     | QA automation        | Remaining Playwright specs, Linux visual baselines, Lighthouse config, smoke script                                                                                                                                         | W4, W5       |
+| **W6** ✅  | QA automation        | Remaining Playwright specs, Linux visual baselines, Lighthouse config, smoke script                                                                                                                                         | W4, W5       |
 | **Gate 2** | Reviewer             | Diffs and self-tests from W5–W6                                                                                                                                                                                             | W5–W6        |
 | **W7** ✅  | Railway config       | `railway.toml`, `start`, the deploy script, the README guide, removing the Cloudflare job (can start any time after W1)                                                                                                     | W1           |
 | **Deploy** | Aaron (local)        | `railway login` → `pnpm run deploy:railway` → paste the URL back                                                                                                                                                            | Gate 2, W7   |

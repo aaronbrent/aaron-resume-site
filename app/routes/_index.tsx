@@ -65,27 +65,34 @@ export default function Index() {
           tabIndex={-1}
           className="flex min-h-svh flex-col justify-center px-6 py-16 md:px-16"
         >
-          <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-sunlight">
-            A career in orbit
-          </p>
-          <h1 className="mt-3 font-display text-6xl font-bold uppercase tracking-wide md:text-8xl">
-            {site.name}
-          </h1>
-          <p className="mt-4 max-w-xl text-lg text-dust">{site.positioning}</p>
-          <p className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
-            <a className={link} href="/resume">
-              Skip to text
-            </a>
-            <a className={link} href={contact.resumePdf}>
-              Download PDF
-            </a>
-          </p>
-          <p
-            className="scroll-cue mt-16 text-sm uppercase tracking-[0.2em] text-dust"
-            aria-hidden="true"
+          {/* The plate keeps the hero readable over anything behind it — the
+              poster's sun, the canvas, any viewport (gate 2, finding 1). */}
+          <div
+            data-hero-plate
+            className="w-fit max-w-2xl rounded-2xl bg-void/80 p-6 shadow-lg ring-1 ring-starlight/10 backdrop-blur-sm md:p-10"
           >
-            Scroll <span className="scroll-cue-arrow inline-block">↓</span>
-          </p>
+            <p className="font-display text-sm font-semibold uppercase tracking-[0.3em] text-sunlight">
+              A career in orbit
+            </p>
+            <h1 className="mt-3 font-display text-6xl font-bold uppercase tracking-wide md:text-8xl">
+              {site.name}
+            </h1>
+            <p className="mt-4 max-w-xl text-lg text-dust">{site.positioning}</p>
+            <p className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+              <a className={link} href="/resume">
+                Skip to text
+              </a>
+              <a className={link} href={contact.resumePdf}>
+                Download PDF
+              </a>
+            </p>
+            <p
+              className="scroll-cue mt-10 text-sm uppercase tracking-[0.2em] text-dust"
+              aria-hidden="true"
+            >
+              Scroll <span className="scroll-cue-arrow inline-block">↓</span>
+            </p>
+          </div>
         </header>
 
         {planets.map((p) => (

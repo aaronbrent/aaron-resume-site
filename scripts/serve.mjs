@@ -4,7 +4,9 @@
  *     page pointing at hashed chunks that no longer exist.
  *   - /assets/* (content-hashed): one year, immutable.
  *   - everything else (fonts, poster, PDF): one hour.
- *   - unknown paths: the app's own 404 page, with a real 404 status.
+ *   - unknown paths: the prerendered 404 page, with a real 404 status.
+ *   - precompressed .br / .gz siblings (scripts/compress.mjs) when the client
+ *     accepts them — Railway does not compress at the edge.
  */
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -12,12 +14,16 @@ import { fileURLToPath } from "node:url";
 import sirv from "sirv";
 
 const root = fileURLToPath(new URL("../build/client", import.meta.url));
-const notFound = readFileSync(`${root}/__spa-fallback.html`);
-const port = Number(process.env.PORT) || 3000;
+const notFound = readFileSync(`${root}/404/index.html`);
+// $PORT (Railway), or `--port <n>` (CI / Lighthouse), else 3000.
+const flag = process.argv.indexOf("--port");
+const port =
+  Number(process.env.PORT) || Number(flag > -1 ? process.argv[flag + 1] : 0) || 3000;
 
 const assets = sirv(root, {
   etag: true,
-  gzip: false,
+  brotli: true,
+  gzip: true,
   setHeaders(res, pathname) {
     // Pages: "/", "/resume", "/resume/", "/x.html" (anything without an extension).
     if (pathname.endsWith(".html") || !/\.[a-z0-9]+$/i.test(pathname)) {

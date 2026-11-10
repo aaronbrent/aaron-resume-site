@@ -22,13 +22,14 @@ postprocessing (lazy-loaded 3D layer over a complete semantic document).
 | --------------------------- | ------------------------------------------------------------------- |
 | `pnpm dev`                  | Dev server with HMR                                                 |
 | `pnpm build`                | Static prerender to `build/client/`                                 |
-| `pnpm preview`              | Serve the static build on :4173                                     |
+| `pnpm preview`              | Production server (`scripts/serve.mjs`) on :4173                    |
 | `pnpm typecheck`            | React Router typegen + `tsc`                                        |
 | `pnpm lint` / `pnpm format` | ESLint (flat, jsx-a11y) / Prettier check                            |
 | `pnpm test`                 | Vitest unit tests (content, scroll progress, scene layout)          |
+| `pnpm qa:smoke [url]`       | Smoke test: scene renders, compression, 404, no console errors      |
 | `pnpm test:e2e`             | Playwright + axe against the static build (build first)             |
 | `pnpm bundle:check`         | Critical-path / lazy-3D-chunk gzip budgets, no dev-only tools       |
-| `pnpm lighthouse`           | Lighthouse CI with `budgets.json` assertions                        |
+| `pnpm lighthouse`           | Lighthouse CI against the production server (`pnpm start`)          |
 | `pnpm poster`               | Render the posters + social card from the real scene (build first)  |
 | `pnpm pdf`                  | Re-print `/resume` to `public/aaron-ellis-resume.pdf` (build first) |
 

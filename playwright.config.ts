@@ -23,7 +23,9 @@ export default defineConfig({
   // Linux-only baselines (docs/PLAN-STAR-SYSTEM.md §7); one folder per spec.
   snapshotPathTemplate:
     "{testDir}/__screenshots__/{testFilePath}/{projectName}/{arg}-{platform}{ext}",
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.02 } },
+  // Scene specs run on software GL: under CPU contention (parallel workers,
+  // small CI runners) a scroll's re-render can block the page for seconds.
+  expect: { timeout: 15_000, toHaveScreenshot: { maxDiffPixelRatio: 0.02 } },
   // CI installs Chromium only, so the phone project runs an iPhone viewport
   // on Chromium rather than WebKit.
   projects: [
