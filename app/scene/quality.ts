@@ -1,5 +1,6 @@
 /**
- * Quality tiers (docs/PLAN-STAR-SYSTEM.md §6, W5). Pure: the scene picks a
+ * Quality tiers (docs/PLAN-STAR-SYSTEM.md §6, W5): resolution, planet detail
+ * and dust density (antialiasing is native and fixed). Pure: the scene picks a
  * starting tier from the device, then a governor steps down (never up) if
  * the measured frame rate can't hold. `?qa=1` pins the top tier so visual
  * snapshots don't depend on the machine; `?tier=0|1|2` forces one (tuning).
@@ -10,10 +11,6 @@ export type Tier = 0 | 1 | 2;
 export interface TierSettings {
   /** Device-pixel-ratio ceiling. */
   dprMax: number;
-  /** Composer MSAA samples (0 = off). */
-  multisampling: number;
-  /** HDR bloom on the sun and lava (the composer stays for tone mapping). */
-  bloom: boolean;
   /** Planet geometry detail (PlanetBody `detail`). */
   detail: number;
   /** Dust motes drawn. */
@@ -21,9 +18,9 @@ export interface TierSettings {
 }
 
 export const TIERS: Record<Tier, TierSettings> = {
-  2: { dprMax: 1.5, multisampling: 4, bloom: true, detail: 1, dust: 420 },
-  1: { dprMax: 1.25, multisampling: 0, bloom: true, detail: 0.65, dust: 260 },
-  0: { dprMax: 1, multisampling: 0, bloom: false, detail: 0.45, dust: 140 },
+  2: { dprMax: 1.5, detail: 1, dust: 420 },
+  1: { dprMax: 1.25, detail: 0.65, dust: 260 },
+  0: { dprMax: 1, detail: 0.45, dust: 140 },
 };
 
 export interface DeviceInfo {

@@ -6,7 +6,7 @@ import { subscribe } from "~/lib/progress";
 import { isQaMode } from "./constants";
 import { DustMotes } from "./DustMotes";
 import { CameraRig } from "./CameraRig";
-import { Effects } from "./Effects";
+import { CardAnchors } from "./CardAnchors";
 import { planetPosition } from "./layout";
 import { Lighting } from "./Lighting";
 import { Nebula } from "./Nebula";
@@ -17,7 +17,7 @@ import { SceneCanvas } from "./SceneCanvas";
 import { Sun } from "./Sun";
 
 export interface SceneProps {
-  /** Called once the composer has drawn its first frame to the canvas. */
+  /** Called once the first frame has been drawn to the canvas. */
   onFirstFrame: () => void;
   /** Called on WebGL context loss or a scene error; the mount unmounts us. */
   onFail: () => void;
@@ -29,9 +29,14 @@ const DPRS: Record<Tier, [number, number]> = {
   1: [1, TIERS[1].dprMax],
   0: [1, TIERS[0].dprMax],
 };
-/** The composer does the AA (MSAA on its input buffer) and tone mapping. */
+/**
+ * Plain WebGL rendering straight to the canvas: native MSAA, tone mapping and
+ * sRGB output on the renderer, no off-screen post chain. The post-processing
+ * composer (bloom) drew only a strip of the frame on real GPUs, invisible to
+ * software-GL QA, so it was removed; the sun halo and shader glows stand in.
+ */
 const GL: RenderProps<HTMLCanvasElement>["gl"] = {
-  antialias: false,
+  antialias: true,
   powerPreference: "high-performance",
   stencil: false,
 };
@@ -43,8 +48,8 @@ const CAMERA: RenderProps<HTMLCanvasElement>["camera"] = {
   position: [0, 30, 80],
 };
 const onCreated: RenderProps<HTMLCanvasElement>["onCreated"] = ({ gl }) => {
-  // Nominal renderer settings (ACES, sRGB). While the composer is mounted it
-  // switches renderer tone mapping off and applies ACES itself (Effects.tsx).
+  // ACES + sRGB on the renderer. Custom shaders include three's
+  // tonemapping/colorspace chunks so they go through the same curve.
   gl.toneMapping = ACESFilmicToneMapping;
   gl.outputColorSpace = SRGBColorSpace;
 };
@@ -64,6 +69,19 @@ function QaFrameDriver() {
     invalidate(QA_WARMUP_FRAMES);
     return subscribe(() => invalidate(QA_WARMUP_FRAMES));
   }, [invalidate]);
+  return null;
+}
+
+/** Reports the first rendered frame (html[data-scene=on] keys off it). */
+function FirstFrame({ onFirstFrame }: { onFirstFrame: () => void }) {
+  const reported = useRef(false);
+  // Priority 0 runs before R3F's own render of the frame; the rAF lands
+  // after that frame has been drawn.
+  useFrame(() => {
+    if (reported.current) return;
+    reported.current = true;
+    requestAnimationFrame(onFirstFrame);
+  });
   return null;
 }
 
@@ -135,11 +153,8 @@ export default function Scene({ onFirstFrame, onFail }: SceneProps) {
           detail={quality.detail}
         />
       ))}
-      <Effects
-        onFirstFrame={onFirstFrame}
-        multisampling={quality.multisampling}
-        bloom={quality.bloom}
-      />
+      <CardAnchors qa={qa} />
+      <FirstFrame onFirstFrame={onFirstFrame} />
       {pinned || tier === 0 ? null : <QualityGovernor onDrop={dropTier} />}
       {qa ? <QaFrameDriver /> : null}
     </SceneCanvas>

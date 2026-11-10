@@ -52,7 +52,7 @@ import {
  * global registry), or render the instance with <primitive object={…} />.
  *
  * Covers: Sun, Nebula, DustMotes, OrbitGuides, Lighting (incl. drei
- * Lightformer/Environment), @react-three/postprocessing, and the usual
+ * Lightformer/Environment), CardAnchors, and the usual
  * planet-building blocks for app/scene/planets.
  */
 export function registerSceneElements(): void {

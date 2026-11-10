@@ -77,7 +77,7 @@ void main() {
   float veil = smoothstep(-0.1, 0.7, dens2) * (0.25 + 0.75 * band) * (1.0 - 0.5 * gas);
   col = mix(col, mix(uPurple, uTeal, hue), veil * 0.35);
 
-  // Luminous rose cores in the densest knots (still far below bloom).
+  // Luminous rose cores in the densest knots (kept soft under ACES).
   float core = smoothstep(0.3, 0.9, gas + 0.3 * dens2) * (0.4 + 0.6 * hue);
   col += uRose * core * 0.75;
 
@@ -86,6 +86,8 @@ void main() {
   col += vec3(1.0, 0.95, 0.88) * s * (0.6 - 0.45 * gas);
 
   gl_FragColor = vec4(col, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;
 

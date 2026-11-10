@@ -6,8 +6,8 @@
  *   modulepreload links + entry imports), measured from the built HTML, not
  *   guessed. It must stay ≤ 130 KB gz and must not contain three.js.
  * - Lazy chunks = every other script (today: the Scene chunk). They all
- *   count toward the 3D budget, ≤ 260 KB gz, so a future split of drei or
- *   postprocessing into its own async chunk can't slip past both budgets.
+ *   count toward the 3D budget, ≤ 235 KB gz, so a future split of drei or
+ *   other scene code into its own async chunk can't slip past both budgets.
  * - Dev-only tooling (leva) must not ship anywhere.
  */
 import { readdirSync, readFileSync } from "node:fs";
@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
-const SCENE_BUDGET_KB = 260;
+const SCENE_BUDGET_KB = 235;
 const CRITICAL_BUDGET_KB = 130;
 const REQUIRE_3D_DEFAULT = true;
 const require3d = process.env.REQUIRE_3D

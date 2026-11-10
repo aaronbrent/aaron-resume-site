@@ -32,7 +32,7 @@ export interface BiomeLook {
   tilt: readonly [x: number, z: number];
   /** Thin additive atmosphere shell radius (× size); 0 = none. */
   atmosphereScale: number;
-  /** Peak atmosphere glow (kept < 1 so Bloom ignores it). */
+  /** Peak atmosphere glow before ATMOSPHERE_GAIN (materials.ts). */
   atmosphereStrength: number;
   /** Fresnel rim strength on the body. */
   rim: number;

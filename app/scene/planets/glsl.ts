@@ -55,7 +55,7 @@ float fbm(vec3 p){
 /**
  * Surface per kind. `p` is the unit-sphere point in object space (so the
  * pattern spins with the mesh). Writes albedo, roughness, emissive (HDR:
- * only lava exceeds 1 so Bloom picks it out) and alpha (clouds).
+ * only lava exceeds 1, reading as hot after tone mapping) and alpha (clouds).
  */
 export const SURFACE = /* glsl */ `
 uniform float uTime;

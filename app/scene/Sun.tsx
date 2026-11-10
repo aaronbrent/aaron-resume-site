@@ -57,16 +57,18 @@ void main() {
   col = mix(col, uCore, smoothstep(0.5, 1.0, mu) * (0.45 + 0.55 * surface));
   col *= 0.68 + 0.5 * surface + 0.08 * grain;
 
-  // HDR, but modest: > 1 across the disc so it blooms, low enough that a
+  // HDR, but modest: > 1 across the disc so ACES rolls it off warmly, low enough that a
   // full-frame close-up (W3's hero) keeps its colour and surface detail.
   col *= 1.45 + 0.5 * mu;
 
   // Fresnel lift at the limb — the soft, glowing "Pixar" edge. Golden and
-  // bright enough (luminance > 1) that bloom haloes the limb, not just the core.
+  // bright enough (luminance > 1) to read as glowing; the halo quad does the rest.
   float rim = pow(1.0 - mu, 2.6);
   col += vec3(1.0, 0.62, 0.26) * rim * 1.6 * vRimFade;
 
   gl_FragColor = vec4(col, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;
 
@@ -77,7 +79,7 @@ varying float vFade;
 void main() {
   // Dim the shell as the camera approaches (a full-frame halo washes the
   // shot out) and drop it entirely inside, where its back faces would wrap
-  // the whole view. Up close, bloom on the limb carries the glow.
+  // the whole view. Up close, the limb rim and the halo carry the glow.
   vec3 centre = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   float shell = length(modelMatrix[0].xyz);
   float dist = length(cameraPosition - centre);
@@ -108,8 +110,49 @@ void main() {
   float glow = 0.55 * exp(-8.0 * t) + 0.5 * pow(1.0 - t, 2.5);
   float breathe = 1.0 + 0.05 * sin(uTime * 0.6);
   gl_FragColor = vec4(uColor * glow * breathe * vFade, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;
+
+/*
+ * Halo: a camera-facing quad with a soft radial falloff, additive. It stands
+ * in for the bloom pass this scene used to have (removed: the post chain
+ * broke on real GPUs), giving the sun its wide, warm Pixar glow. Billboarded
+ * in the vertex shader, so it costs one quad and no render targets.
+ */
+const HALO_VERTEX = /* glsl */ `
+uniform float uSize;
+varying vec2 vUv;
+varying float vFade;
+void main() {
+  vUv = uv * 2.0 - 1.0;
+  vec4 centre = viewMatrix * modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  // Ease off close up so the hero shot keeps its colour and detail.
+  vFade = mix(0.35, 1.0, smoothstep(3.0, 9.0, length(centre.xyz)));
+  centre.xy += position.xy * uSize;
+  gl_Position = projectionMatrix * centre;
+}
+`;
+
+const HALO_FRAGMENT = /* glsl */ `
+uniform vec3 uColor;
+uniform float uTime;
+varying vec2 vUv;
+varying float vFade;
+void main() {
+  float r = length(vUv);
+  float glow = 0.5 * exp(-r * r * 9.0) + 0.35 * pow(max(0.0, 1.0 - r), 3.0);
+  glow *= 1.0 - smoothstep(0.8, 1.0, r); // exactly 0 at the quad's edge
+  float breathe = 1.0 + 0.04 * sin(uTime * 0.5);
+  gl_FragColor = vec4(uColor * glow * breathe * vFade, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+
+/** Halo radius in sun radii. */
+const HALO_SIZE = 5;
 
 const CORONA_SCALE = 3.0;
 const SUN_DEFINES = { OCTAVES: 4 };
@@ -134,10 +177,29 @@ export function Sun({ qa }: { qa: boolean }) {
     }),
     [time],
   );
+  const haloUniforms = useMemo(
+    () => ({
+      uTime: time,
+      uSize: { value: SUN_RADIUS * HALO_SIZE },
+      uColor: { value: new Color("#ff9a3c").multiplyScalar(0.75) },
+    }),
+    [time],
+  );
   useShaderTime(time, qa);
 
   return (
     <group name="sun">
+      <mesh renderOrder={0} frustumCulled={false}>
+        <planeGeometry args={[2, 2]} />
+        <shaderMaterial
+          vertexShader={HALO_VERTEX}
+          fragmentShader={HALO_FRAGMENT}
+          uniforms={haloUniforms}
+          blending={AdditiveBlending}
+          transparent
+          depthWrite={false}
+        />
+      </mesh>
       <mesh renderOrder={1}>
         <sphereGeometry args={[SUN_RADIUS, 96, 64]} />
         <shaderMaterial

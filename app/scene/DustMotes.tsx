@@ -48,6 +48,8 @@ void main() {
   vec3 cool = vec3(0.6, 0.85, 1.0);
   vec3 col = mix(warm, cool, vTint) * 0.55;
   gl_FragColor = vec4(col * soft * vAlpha, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;
 

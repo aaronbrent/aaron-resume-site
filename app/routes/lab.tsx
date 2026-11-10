@@ -5,13 +5,12 @@
  *   /lab?planet=all    all five in a row (one canvas each, same framing)
  *   &qa=1              frozen, deterministic motion (isQaMode)
  * Lighting mirrors W2a's scene: point light at the origin (decay 2), cool
- * camera-side fill, low Lightformer environment, Bloom + ACES.
+ * camera-side fill, low Lightformer environment, ACES on the renderer, and
+ * no post-processing (removed from the scene: it broke on real GPUs).
  */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment } from "@react-three/drei/core/Environment";
 import { Lightformer } from "@react-three/drei/core/Lightformer";
-import { Bloom, EffectComposer, ToneMapping } from "@react-three/postprocessing";
-import { ToneMappingMode } from "postprocessing";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { planets } from "~/content/planets";
@@ -61,7 +60,7 @@ function LabView({ planet, qa }: { planet: Planet; qa: boolean }) {
     >
       <Canvas
         dpr={1}
-        gl={{ antialias: false, preserveDrawingBuffer: true }}
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
         camera={{ fov: FOV, near: 0.1, far: 200 }}
       >
         <color attach="background" args={["#05060f"]} />
@@ -98,15 +97,6 @@ function LabView({ planet, qa }: { planet: Planet; qa: boolean }) {
           />
         </Environment>
         <PlanetBody visual={planet.visual} position={position} qa={qa} />
-        <EffectComposer multisampling={0}>
-          <Bloom
-            luminanceThreshold={1}
-            luminanceSmoothing={0.15}
-            intensity={0.9}
-            mipmapBlur
-          />
-          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-        </EffectComposer>
         <ReadyFlag onReady={() => setReady(true)} />
       </Canvas>
       <p className="pointer-events-none absolute bottom-2 left-0 w-full text-center font-mono text-xs text-white/50">

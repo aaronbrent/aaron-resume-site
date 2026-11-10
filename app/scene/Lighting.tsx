@@ -10,8 +10,8 @@ import { LightformerEnvironment } from "./LightformerEnvironment";
  * decay 2, Topstep (r = 32) would get 1/16 of SoFi's (r = 8) light. Art
  * direction wants every planet at the same "noon" exposure, the one W2b
  * tuned its biomes against in the planet lab (irradiance 2.4 at each body,
- * i.e. intensity 2.4·d² with decay 2). Day sides stay below the bloom
- * threshold; only the sun and lava rifts glow.
+ * i.e. intensity 2.4·d² with decay 2). Day sides stay below 1, so
+ * only the sun and the lava rifts read as glowing.
  */
 const SUN_IRRADIANCE = 2.4;
 const SUN_COLOR = "#fff1dc";

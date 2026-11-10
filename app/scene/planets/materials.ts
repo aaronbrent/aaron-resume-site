@@ -114,13 +114,20 @@ export function createBodyMaterial(
   return material as BodyMaterial;
 }
 
+/**
+ * Atmosphere shells are additive and now tone-mapped on their own (there is
+ * no post pass compressing the summed frame), so they would stack into a
+ * blown-out white rim at their old strengths. This restores their look.
+ */
+export const ATMOSPHERE_GAIN = 0.12;
+
 export function createAtmosphereMaterial(visual: PlanetVisual): ShaderMaterial {
   const look = BIOME_LOOK[visual.biome];
   return new ShaderMaterial({
     uniforms: {
       uAtmos: { value: color(visual.palette.atmosphere) },
       uScale: { value: look.atmosphereScale },
-      uStrength: { value: look.atmosphereStrength },
+      uStrength: { value: look.atmosphereStrength * ATMOSPHERE_GAIN },
     },
     vertexShader: ATMOS_VERT,
     fragmentShader: ATMOS_FRAG,
