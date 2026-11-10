@@ -3,9 +3,12 @@ import { defineConfig, devices } from "@playwright/test";
 // Sandboxed/CI-like environments can point at a system Chromium instead of a
 // Playwright-managed download (e.g. PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium).
 const chromiumExecutable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
-const launchOptions = chromiumExecutable
-  ? { executablePath: chromiumExecutable }
-  : undefined;
+// Recent Chromium only falls back to SwiftShader WebGL (headless, no GPU)
+// when explicitly allowed; the scene and visual specs need it.
+const launchOptions = {
+  args: ["--enable-unsafe-swiftshader"],
+  ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
+};
 
 export default defineConfig({
   testDir: "./e2e",
@@ -17,6 +20,10 @@ export default defineConfig({
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
   },
+  // Linux-only baselines (docs/PLAN-STAR-SYSTEM.md §7); one folder per spec.
+  snapshotPathTemplate:
+    "{testDir}/__screenshots__/{testFilePath}/{projectName}/{arg}-{platform}{ext}",
+  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.02 } },
   // CI installs Chromium only, so the phone project runs an iPhone viewport
   // on Chromium rather than WebKit.
   projects: [

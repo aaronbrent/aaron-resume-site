@@ -158,7 +158,12 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
     desktop and mobile. Baselines come from **Linux only**, with
     `maxDiffPixelRatio` ≈ 0.02.
 - **Lighthouse:** perf ≥ 0.85 on mobile, a11y = 1, best-practices ≥ 0.95, CLS = 0. The
-  script budget is raised to fit the lazy chunk.
+  script budget is raised to fit the lazy chunk. It gates the static path (`/`,
+  `/resume/`): what every visitor gets first, since the 3D layer loads after paint.
+  A `?gl=full` run is _not_ gated: in CI the scene renders on SwiftShader (CPU), which
+  under Lighthouse's 4× CPU throttle reads as ~150 s of blocking time — a property of
+  software GL, not of real GPUs. Scene runtime is covered by `qa:smoke` (FPS on real
+  GPUs) and the tier governor.
 - **`bundle:check`:** critical path ≤ 130 KB gz, lazy 3D chunk ≤ 260 KB gz, no leva. W2a
   flips `REQUIRE_3D_DEFAULT` to true once the scene exists.
 - **`scripts/qa-smoke.ts`:**
