@@ -8,6 +8,12 @@ const deg = (d: number) => (d * Math.PI) / 180;
  * from the trail-map site; Topstep is new and mandate-focused.
  *
  * May 2026 → October 2026 is a real gap and stays visible — no filler.
+ *
+ * Placement (orbitRadius / orbitAngle / elevation) is tuned so each leg of
+ * the flight heads somewhere new as seen from the parked camera: SoFi out to
+ * the left and up, Public.com to the right, Empirium nearly straight ahead
+ * and down, NuvaLabs left and up, Topstep right and down. The camera-path
+ * tests guard that variety, the spacing and the clearances.
  */
 export const planets = [
   {
@@ -31,8 +37,9 @@ export const planets = [
       biome: "molten",
       palette: { base: "#7a1f12", accent: "#ff7a1a", atmosphere: "#ffb36b" },
       size: 0.55,
-      orbitRadius: 8,
-      orbitAngle: deg(20),
+      orbitRadius: 10,
+      orbitAngle: deg(152),
+      elevation: 1,
       hasRings: false,
       moonCount: 1,
     },
@@ -57,8 +64,9 @@ export const planets = [
       biome: "ocean",
       palette: { base: "#0f5f7a", accent: "#3fd0c9", atmosphere: "#bff3ff" },
       size: 0.8,
-      orbitRadius: 13,
-      orbitAngle: deg(90),
+      orbitRadius: 24,
+      orbitAngle: deg(126),
+      elevation: 1,
       hasRings: false,
       moonCount: 1,
     },
@@ -84,8 +92,9 @@ export const planets = [
       biome: "desert",
       palette: { base: "#c98f4a", accent: "#8a5cc7", atmosphere: "#f2c98f" },
       size: 0.75,
-      orbitRadius: 18,
-      orbitAngle: deg(160),
+      orbitRadius: 40,
+      orbitAngle: deg(132),
+      elevation: -4,
       hasRings: true,
       moonCount: 0,
     },
@@ -112,8 +121,9 @@ export const planets = [
       biome: "ice-ringed",
       palette: { base: "#b9d7ef", accent: "#ffffff", atmosphere: "#dff1ff" },
       size: 1.0,
-      orbitRadius: 25,
-      orbitAngle: deg(230),
+      orbitRadius: 58,
+      orbitAngle: deg(152),
+      elevation: -5,
       hasRings: true,
       moonCount: 2,
     },
@@ -140,8 +150,9 @@ export const planets = [
       biome: "gas-giant-banded",
       palette: { base: "#e8dcc0", accent: "#4a7ba6", atmosphere: "#f5efd8" },
       size: 1.35,
-      orbitRadius: 32,
-      orbitAngle: deg(305),
+      orbitRadius: 78,
+      orbitAngle: deg(152),
+      elevation: -15,
       hasRings: false,
       moonCount: 0,
     },

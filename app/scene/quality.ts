@@ -18,9 +18,9 @@ export interface TierSettings {
 }
 
 export const TIERS: Record<Tier, TierSettings> = {
-  2: { dprMax: 1.5, detail: 1, dust: 420 },
-  1: { dprMax: 1.25, detail: 0.65, dust: 260 },
-  0: { dprMax: 1, detail: 0.45, dust: 140 },
+  2: { dprMax: 1.5, detail: 1, dust: 700 },
+  1: { dprMax: 1.25, detail: 0.65, dust: 440 },
+  0: { dprMax: 1, detail: 0.45, dust: 240 },
 };
 
 export interface DeviceInfo {

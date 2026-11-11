@@ -45,6 +45,10 @@ describe("planets", () => {
     }
   });
 
+  it("keeps elevations modest (|y| ≤ 20)", () => {
+    for (const p of planets) expect(Math.abs(p.visual.elevation)).toBeLessThanOrEqual(20);
+  });
+
   it("places orbits strictly outward with unique nicknames", () => {
     for (let i = 1; i < planets.length; i++) {
       expect(planets[i]!.visual.orbitRadius).toBeGreaterThan(

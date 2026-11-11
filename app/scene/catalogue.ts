@@ -51,8 +51,8 @@ import {
  * `extend({ TorusKnotGeometry })` in the module that uses it (extend is a
  * global registry), or render the instance with <primitive object={…} />.
  *
- * Covers: Sun, Nebula, DustMotes, OrbitGuides, Lighting (incl. drei
- * Lightformer/Environment), CardAnchors, and the usual
+ * Covers: Sun, Nebula, DustMotes, Lighting (incl. drei
+ * Lightformer/Environment), PlanetProbe, and the usual
  * planet-building blocks for app/scene/planets.
  */
 export function registerSceneElements(): void {

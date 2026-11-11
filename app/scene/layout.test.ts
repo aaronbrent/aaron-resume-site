@@ -3,10 +3,10 @@ import { planets } from "~/content/planets";
 import { planetPosition } from "./layout";
 
 describe("planetPosition", () => {
-  it("places each planet on its orbit in the y = 0 plane", () => {
+  it("places each planet at its radius, bearing and elevation", () => {
     for (const p of planets) {
       const [x, y, z] = planetPosition(p.visual);
-      expect(y).toBe(0);
+      expect(y).toBe(p.visual.elevation);
       expect(Math.hypot(x, z)).toBeCloseTo(p.visual.orbitRadius);
     }
   });
@@ -20,11 +20,11 @@ describe("planetPosition", () => {
     expect(z1).toBeCloseTo(-2);
   });
 
-  it("keeps neighbouring planets well separated", () => {
+  it("spaces neighbouring planets well apart (≥ 14 units)", () => {
     for (let i = 1; i < planets.length; i++) {
       const a = planetPosition(planets[i - 1]!.visual);
       const b = planetPosition(planets[i]!.visual);
-      expect(Math.hypot(a[0] - b[0], a[2] - b[2])).toBeGreaterThan(5);
+      expect(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])).toBeGreaterThan(14);
     }
   });
 });

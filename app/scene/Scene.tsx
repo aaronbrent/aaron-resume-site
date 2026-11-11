@@ -6,11 +6,10 @@ import { subscribe } from "~/lib/progress";
 import { isQaMode } from "./constants";
 import { DustMotes } from "./DustMotes";
 import { CameraRig } from "./CameraRig";
-import { CardAnchors } from "./CardAnchors";
+import { PlanetProbe } from "./PlanetProbe";
 import { planetPosition } from "./layout";
 import { Lighting } from "./Lighting";
 import { Nebula } from "./Nebula";
-import { OrbitGuides } from "./OrbitGuides";
 import { PlanetBody } from "./planets";
 import { FpsGovernor, forcedTier, initialTier, TIERS, type Tier } from "./quality";
 import { SceneCanvas } from "./SceneCanvas";
@@ -143,7 +142,6 @@ export default function Scene({ onFirstFrame, onFail }: SceneProps) {
       <DustMotes qa={qa} count={quality.dust} />
       <Lighting />
       <Sun qa={qa} />
-      <OrbitGuides />
       {planets.map((p) => (
         <PlanetBody
           key={p.id}
@@ -153,7 +151,7 @@ export default function Scene({ onFirstFrame, onFail }: SceneProps) {
           detail={quality.detail}
         />
       ))}
-      <CardAnchors qa={qa} />
+      {qa ? <PlanetProbe /> : null}
       <FirstFrame onFirstFrame={onFirstFrame} />
       {pinned || tier === 0 ? null : <QualityGovernor onDrop={dropTier} />}
       {qa ? <QaFrameDriver /> : null}

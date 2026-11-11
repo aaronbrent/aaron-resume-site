@@ -11,10 +11,14 @@ import { QA_TIME, useShaderTime } from "./time";
  * freezes the drift.
  */
 
-const COUNT = 420;
-/** Disc the motes live in, in world units (orbits span 8–32). */
+const COUNT = 700;
+/** Disc the motes live in, in world units (planets span 10–78 out). */
 const R_MIN = 2.5;
-const R_MAX = 48;
+const R_MAX = 95;
+/** The flight corridor's bearing (planets sit at 126°–152°), radians. */
+const CORRIDOR = (140 * Math.PI) / 180;
+/** Share of motes concentrated around the corridor, where the camera flies. */
+const CORRIDOR_SHARE = 0.75;
 
 const VERTEX = /* glsl */ `
 uniform float uTime;
@@ -60,8 +64,12 @@ function scatter(): { positions: Float32Array; seeds: Float32Array } {
   for (let i = 0; i < COUNT; i++) {
     // Area-uniform in the disc, thicker further out.
     const r = Math.sqrt(R_MIN * R_MIN + rand() * (R_MAX * R_MAX - R_MIN * R_MIN));
-    const a = rand() * Math.PI * 2;
-    const h = (rand() + rand() + rand() - 1.5) * (1.5 + r * 0.18);
+    // Mostly along the flight corridor (±50°), the rest anywhere.
+    const a =
+      rand() < CORRIDOR_SHARE
+        ? CORRIDOR + (rand() + rand() - 1) * 0.87
+        : rand() * Math.PI * 2;
+    const h = (rand() + rand() + rand() - 1.5) * (2 + r * 0.22);
     positions[i * 3] = r * Math.cos(a);
     positions[i * 3 + 1] = h;
     positions[i * 3 + 2] = -r * Math.sin(a);

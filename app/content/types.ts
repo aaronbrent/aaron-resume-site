@@ -40,13 +40,15 @@ export interface PlanetVisual {
   palette: { base: string; accent: string; atmosphere: string };
   /** Radius in scene units, relative to the sun (SUN_RADIUS = 1). */
   size: number;
-  /** Distance from the sun in scene units. Strictly increasing inner → outer. */
+  /** Horizontal distance from the sun, scene units. Strictly increasing inner → outer. */
   orbitRadius: number;
   /**
-   * Fixed angle on the orbit in radians (0 = +x, counter-clockwise seen from
-   * above). Planets never orbit, so the camera's dwell points stay put.
+   * Fixed bearing around the sun in radians (0 = +x, counter-clockwise seen
+   * from above). Planets never move, so the camera's dwell points stay put.
    */
   orbitAngle: number;
+  /** Height above (+) or below (−) the sun's plane, scene units. */
+  elevation: number;
   hasRings: boolean;
   moonCount: 0 | 1 | 2;
 }
