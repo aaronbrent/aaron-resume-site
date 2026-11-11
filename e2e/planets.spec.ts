@@ -55,6 +55,8 @@ test.describe("flight through the system (scene on)", () => {
   }) => {
     // Phone panels are taller than the screen: arrows scroll natively there.
     test.skip(isMobile, "stepping only applies when a step fits in one viewport");
+    // Five smooth scrolls, each re-rendering software-GL frames.
+    test.setTimeout(90_000);
     await page.locator("body").click({ position: { x: 5, y: 5 } });
     for (const planet of PLANETS.slice(0, 3)) {
       await page.keyboard.press("ArrowDown");
@@ -178,22 +180,29 @@ test.describe("social card", () => {
   });
 });
 
-test.describe("role cards float beside their planets", () => {
-  test("desktop: each card is fixed beside its planet, inside the viewport, never over it", async ({
+test.describe("role cards", () => {
+  test("desktop: fixed to the left, shown on arrival, never over the planet", async ({
     page,
     isMobile,
   }) => {
     test.skip(isMobile, "phones keep the card in flow below the planet");
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     await page.goto(QA_URL);
     await waitForScene(page);
     const vp = page.viewportSize()!;
+    const lefts: number[] = [];
     for (const [i, planet] of PLANETS.entries()) {
-      await parkAtStop(page, i + 1);
       const card = page.locator(`#${planet.id} > article`);
-      await expect
-        .poll(() => card.evaluate((el) => getComputedStyle(el).position))
-        .toBe("fixed");
+      const opacity = () => card.evaluate((el) => Number(getComputedStyle(el).opacity));
+
+      // Mid-flight toward it: the card hasn't appeared yet.
+      await parkAtStop(page, i + 0.5);
+      await expect.poll(opacity).toBeLessThan(0.01);
+
+      // Parked: fixed on the left, fully shown, inside the viewport.
+      await parkAtStop(page, i + 1);
+      await expect.poll(opacity).toBeGreaterThan(0.99);
+      expect(await card.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
       await expect
         .poll(() => card.evaluate((el) => el.style.getPropertyValue("--planet-r")))
         .not.toBe("");
@@ -203,26 +212,23 @@ test.describe("role cards float beside their planets", () => {
         return {
           box: { x: r.x, y: r.y, w: r.width, h: r.height },
           planet: { x: n("--planet-x"), y: n("--planet-y"), r: n("--planet-r") },
-          connector: parseFloat(getComputedStyle(el, "::after").width),
         };
       });
-      // Inside the viewport.
-      expect(geo.box.x).toBeGreaterThanOrEqual(0);
+      lefts.push(Math.round(geo.box.x));
+      expect(geo.box.x + geo.box.w).toBeLessThan(vp.width / 2 + 1);
       expect(geo.box.y).toBeGreaterThanOrEqual(0);
-      expect(geo.box.x + geo.box.w).toBeLessThanOrEqual(vp.width);
       expect(geo.box.y + geo.box.h).toBeLessThanOrEqual(vp.height);
-      // Beside the planet, not over its disc.
+      // The planet is on the right half, clear of the card's box.
+      expect(geo.planet.x).toBeGreaterThan(vp.width / 2);
       const nx = Math.min(Math.max(geo.planet.x, geo.box.x), geo.box.x + geo.box.w);
       const ny = Math.min(Math.max(geo.planet.y, geo.box.y), geo.box.y + geo.box.h);
-      const dist = Math.hypot(geo.planet.x - nx, geo.planet.y - ny);
-      expect(dist, `${planet.id} card overlaps its planet`).toBeGreaterThanOrEqual(
-        geo.planet.r - 1,
-      );
-      // The planet itself is on screen, and a connector reaches toward it.
-      expect(geo.planet.x).toBeGreaterThan(0);
-      expect(geo.planet.x).toBeLessThan(vp.width);
-      expect(geo.connector).toBeGreaterThan(0);
+      expect(
+        Math.hypot(geo.planet.x - nx, geo.planet.y - ny),
+        `${planet.id} card overlaps its planet`,
+      ).toBeGreaterThanOrEqual(geo.planet.r - 1);
     }
+    // One fixed side: the same left edge for every planet.
+    expect(new Set(lefts).size).toBe(1);
   });
 
   test("phones: the card stays in the document flow below the planet", async ({

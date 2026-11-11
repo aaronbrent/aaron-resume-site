@@ -13,14 +13,16 @@ document wins.
 
 A single-page scrolling experience where the camera flies through a stylized solar
 system. The sun at the center represents Aaron; five planets represent his roles in
-chronological order outward. Native page scroll drives a continuous camera path along a
-Catmull-Rom curve; each planet's panel fades in as the camera approaches.
+chronological order outward. Native page scroll drives a continuous camera flight: at
+each planet the camera turns to the next one in the distance, then moves in on it; each
+planet's role card fades in on final approach.
 
 - **Art direction:** Pixar/Dreamworks — soft rounded shading, bounce-light rims, faked
   contact shading, bloom on emissive bodies, painterly nebula backdrop. No audio.
 - **Scroll model:** continuous flight (not snap-to).
-- **Layout:** central sun and five concentric circular orbits. Planets sit at **fixed**
-  angles; they spin, but they never orbit, so the camera's dwell points stay put.
+- **Layout:** the sun, then five planets spread through space (radius, bearing and
+  elevation), 15–25 units apart, with no orbit lines. Planets spin but never move, so
+  the camera's dwell points stay put.
 - **`/resume`** stays an ATS-clean HTML document; `/aaron-ellis-resume.pdf` stays
   downloadable and is regenerated whenever content changes (`pnpm build && pnpm pdf`).
 
@@ -57,13 +59,18 @@ Catmull-Rom curve; each planet's panel fades in as the camera approaches.
 `app/content/planets.ts` is the single source of truth for both copy and scene layout.
 The schema is `Planet` in `app/content/types.ts`.
 
-| idx | id         | org        | period            | biome            | orbit r | angle |
-| --- | ---------- | ---------- | ----------------- | ---------------- | ------- | ----- |
-| 0   | `sofi`     | SoFi       | 2017-06 → 2021-03 | molten           | 8       | 20°   |
-| 1   | `public`   | Public.com | 2021-04 → 2023-05 | ocean            | 13      | 90°   |
-| 2   | `empirium` | Empirium   | 2023-06 → 2024-05 | desert           | 18      | 160°  |
-| 3   | `nuvalabs` | NuvaLabs   | 2024-06 → 2026-05 | ice-ringed       | 25      | 230°  |
-| 4   | `topstep`  | Topstep    | 2026-10 → present | gas-giant-banded | 32      | 305°  |
+| idx | id         | org        | period            | biome            | radius | bearing | elevation |
+| --- | ---------- | ---------- | ----------------- | ---------------- | ------ | ------- | --------- |
+| 0   | `sofi`     | SoFi       | 2017-06 → 2021-03 | molten           | 10     | 152°    | +1        |
+| 1   | `public`   | Public.com | 2021-04 → 2023-05 | ocean            | 24     | 126°    | +1        |
+| 2   | `empirium` | Empirium   | 2023-06 → 2024-05 | desert           | 40     | 132°    | −4        |
+| 3   | `nuvalabs` | NuvaLabs   | 2024-06 → 2026-05 | ice-ringed       | 58     | 152°    | −5        |
+| 4   | `topstep`  | Topstep    | 2026-10 → present | gas-giant-banded | 78     | 152°    | −15       |
+
+Placement is tuned so every leg heads somewhere new as seen from the parked camera
+(SoFi out left and up, Public.com right, Empirium nearly straight ahead and down,
+NuvaLabs left and up, Topstep right and down). `camera-path.test.ts` guards the
+variety, spacing (≥ 14 units), clearances and the sunlit arrival.
 
 - Copy for the first four roles is carried over verbatim from the old site.
 - Topstep's copy is mandate-focused ("Owns…", "Sets…", "Defines…") and gets refreshed
@@ -83,8 +90,8 @@ The schema is `Planet` in `app/content/types.ts`.
 
 ### Sun
 
-An emissive sphere with a warm gradient core, soft bloom and gentle rotation. Faint
-circular orbit guides, one per planet.
+An emissive sphere with a warm gradient core, a soft halo and gentle rotation. (The
+original faint orbit guides were removed to give a sense of open space.)
 
 ### Planets
 
@@ -124,10 +131,13 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
 
 - **Page 0 (hero):** the sun fills the frame, with the name, tagline and a "Scroll"
   cue.
-- **Pages 1–5:** the camera follows a Catmull-Rom curve built from `planetPosition()`
-  and parks at each planet in turn.
-  - Cubic ease-in-out on dwell segments, linear on travel.
-  - The panel fades in at about 75% proximity.
+- **Pages 1–5:** each leg of the flight (`app/scene/camera-path.ts`) is:
+  - **pan** (first 30%): the camera holds and turns to face the next planet's centre,
+    out in the distance;
+  - **dolly**: it moves in along a straight line (eased, no swoop up or down);
+  - **settle** (last ~45% of the dolly): the aim eases off-centre so the planet slides
+    to the right as the camera parks.
+  - Each planet's parked pose sits on its approach line, a touch above for a ¾ view.
 - **Navigation:**
   - "Skip to text" goes to `/resume`.
   - ArrowDown/ArrowUp step between planets; Home/End jump to the sun or the outermost
@@ -135,11 +145,13 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
   - Deep links (`/#topstep`) keep working, because the sections are real document
     anchors.
 
-- **Role cards float beside their planet** (wide landscape screens, scene on): each
-  prerendered `<article>` becomes a fixed glass card placed every frame next to its
-  planet's projected disc, never over it, with a connector to the rim
-  (`app/scene/card-anchor.ts`, `CardAnchors.tsx`). Phones and short windows keep the
-  card in flow below the planet. The DOM, deep links, print and no-JS are unchanged.
+- **Role cards** (wide landscape screens, scene on): each prerendered `<article>` is a
+  glass card **fixed to the left**, vertically centred, while the planet is framed on
+  the right. It fades in only on **final approach** (`app/lib/panels.ts`, from 0.36 stops
+  out) and out quickly on departure, so only one card ever shows. Phones and short
+  windows keep the card in flow below the planet. The DOM, deep links, print and no-JS
+  are unchanged. In `?qa=1`, `PlanetProbe` exposes each planet's screen position so
+  e2e can assert the card never covers it.
 
 ## 6. Mobile, accessibility, reduced motion
 
@@ -253,7 +265,7 @@ independently.
 | Art style      | Pixar/Dreamworks                                               | Flat vector; Ghibli painterly; low-poly      |
 | Scroll model   | Continuous flight on native document scroll                    | Snap-to; drei ScrollControls                 |
 | Existing site  | Replace entirely                                               | Archive branch; easter-egg route             |
-| Layout         | Sun + concentric orbits, planets at fixed angles               | Orbiting planets; linear path; constellation |
+| Layout         | Sun + planets spread in 3D, varied flight directions           | Concentric orbits + guides; orbiting planets |
 | Semantics      | Prerendered document always; canvas as an aria-hidden backdrop | Reduced-motion-only cards; drei `<Html>`     |
 | Mobile         | Same 3D, dialed down                                           | 3D intro + cards; full parity                |
 | Postprocessing | Bloom, vignette, SMAA                                          | SSAO; FXAA                                   |

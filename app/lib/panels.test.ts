@@ -1,21 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { REVEAL_FULL, REVEAL_ZERO, revealAt } from "./panels";
+import {
+  REVEAL_APPROACH_START,
+  REVEAL_DEPART_END,
+  REVEAL_FULL,
+  revealAt,
+} from "./panels";
 
 describe("revealAt", () => {
-  it("is fully shown through the dwell and hidden mid-travel", () => {
+  it("is fully shown through the dwell", () => {
     expect(revealAt(2, 2)).toBe(1);
-    expect(revealAt(2 + REVEAL_FULL, 2)).toBe(1);
     expect(revealAt(2 - REVEAL_FULL, 2)).toBe(1);
-    expect(revealAt(2.35, 2)).toBeGreaterThan(0);
-    expect(revealAt(2.35, 2)).toBeLessThan(1);
-    // Mid-flight is clear: neither neighbour's card shows.
-    expect(revealAt(2.5, 2)).toBe(0);
-    expect(revealAt(2.5, 3)).toBe(0);
-    expect(revealAt(2 + REVEAL_ZERO, 2)).toBe(0);
-    expect(revealAt(4, 2)).toBe(0);
+    expect(revealAt(2 + REVEAL_FULL, 2)).toBe(1);
   });
 
-  it("hands over between neighbours: one fades out as the next fades in", () => {
-    expect(revealAt(1.5, 1)).toBeCloseTo(revealAt(1.5, 2));
+  it("stays hidden through most of the approach, fading in only at the end", () => {
+    expect(revealAt(1.5, 2)).toBe(0); // mid-flight
+    expect(revealAt(2 - REVEAL_APPROACH_START, 2)).toBe(0);
+    const late = revealAt(2 - (REVEAL_FULL + REVEAL_APPROACH_START) / 2, 2);
+    expect(late).toBeGreaterThan(0);
+    expect(late).toBeLessThan(1);
+  });
+
+  it("is gone soon after the camera leaves", () => {
+    expect(revealAt(2 + REVEAL_DEPART_END, 2)).toBe(0);
+    expect(revealAt(2.5, 2)).toBe(0);
+    expect(REVEAL_DEPART_END - REVEAL_FULL).toBeLessThan(
+      REVEAL_APPROACH_START - REVEAL_FULL,
+    );
+  });
+
+  it("never shows two cards at once", () => {
+    for (let stop = 0; stop <= 5; stop += 0.01) {
+      const shown = [0, 1, 2, 3, 4, 5].filter((own) => revealAt(stop, own) > 0);
+      expect(shown.length).toBeLessThanOrEqual(1);
+    }
   });
 });

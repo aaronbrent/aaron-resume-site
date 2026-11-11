@@ -9,17 +9,30 @@ import { DWELL_FRACTION, getProgress, subscribe } from "./progress";
 
 /** Fully shown while within this many stops of the planet (its dwell). */
 export const REVEAL_FULL = DWELL_FRACTION / 2;
-/** Fully hidden beyond this many stops (mid-travel). */
-export const REVEAL_ZERO = 0.45;
+/**
+ * Approaching: hidden until this many stops out — the final approach, once
+ * the camera has begun easing the planet to the right (camera-path SETTLE) —
+ * then fading in to full at the dwell.
+ */
+export const REVEAL_APPROACH_START = 0.36;
+/** Leaving: gone by this many stops past, as the camera turns away. */
+export const REVEAL_DEPART_END = 0.32;
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
 }
 
-/** Reveal for a panel whose stop is `own`, with the camera at stop `stop`. */
+/**
+ * Reveal for a panel whose stop is `own`, with the camera at stop `stop`.
+ * Asymmetric: a card fades in only on final approach to its planet, and
+ * out quickly once the camera leaves.
+ */
 export function revealAt(stop: number, own: number): number {
-  return 1 - smoothstep(REVEAL_FULL, REVEAL_ZERO, Math.abs(stop - own));
+  const ahead = own - stop; // > 0 while still approaching
+  return ahead >= 0
+    ? 1 - smoothstep(REVEAL_FULL, REVEAL_APPROACH_START, ahead)
+    : 1 - smoothstep(REVEAL_FULL, REVEAL_DEPART_END, -ahead);
 }
 
 export function installPanelFades(): () => void {

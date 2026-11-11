@@ -48,17 +48,25 @@ export async function waitForScene(page: Page) {
 }
 
 /**
- * Parks stop `k` (0 = hero, i + 1 = planet i): its section top at the
- * viewport top, exactly where app/lib/progress.ts puts the stop.
+ * Parks at stop `k` (0 = hero, i + 1 = planet i): its section top at the
+ * viewport top, exactly where app/lib/progress.ts puts the stop. Fractional
+ * `k` scrolls proportionally between two stops (mid-flight).
  */
 export async function parkAtStop(page: Page, k: number) {
   await page.evaluate((k) => {
-    const stops = document.querySelectorAll<HTMLElement>(
+    const els = document.querySelectorAll<HTMLElement>(
       "#main > header, #main > [data-planet]",
     );
-    const el = stops[k];
-    if (!el) throw new Error(`no stop ${k}`);
-    const top = k === 0 ? 0 : el.getBoundingClientRect().top + window.scrollY;
+    const tops = Array.from(els, (el, i) =>
+      i === 0 ? 0 : el.getBoundingClientRect().top + window.scrollY,
+    );
+    const whole = Math.floor(k);
+    const f = k - whole;
+    if (tops[whole] === undefined || (f > 0 && tops[whole + 1] === undefined)) {
+      throw new Error(`no stop ${k}`);
+    }
+    const top =
+      f === 0 ? tops[whole]! : tops[whole]! + (tops[whole + 1]! - tops[whole]!) * f;
     window.scrollTo({ top, behavior: "instant" });
   }, k);
   // progress.ts publishes on the next animation frame.

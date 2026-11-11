@@ -136,35 +136,29 @@
 }
 
 /*
- * Anchored role cards (docs/PLAN-STAR-SYSTEM.md §5). On wide landscape
- * screens with the scene drawing, each card floats beside its planet as a
- * glass panel: position:fixed, placed every frame by app/scene/CardAnchors
- * via --card-x/--card-y, with a connector to the planet's rim. The query must
- * match ANCHOR_QUERY there. Short windows and phones keep the card in flow
- * below the planet. Off-screen until first placed (no flash at 0,0).
+ * Role cards on wide landscape screens with the scene drawing: a glass panel
+ * fixed to the left, vertically centred, while the camera frames the planet
+ * on the right. --reveal (app/lib/panels.ts) fades it in only on final
+ * approach. Phones and short windows keep the card in flow below the planet.
  */
 @media (min-width: 768px) and (orientation: landscape) and (min-height: 520px) {
   html[data-scene="on"] #main > [data-planet] > article {
     position: fixed;
-    top: 0;
-    left: 0;
+    top: 50%;
+    left: clamp(1.5rem, 4vw, 4rem);
     z-index: 10;
-    width: min(31rem, calc(100vw - 3rem));
+    width: min(31rem, calc(50vw - 2rem));
     max-width: none;
     max-height: calc(100vh - 3rem);
     padding: 1.25rem 1.5rem;
     font-size: 0.875rem;
     line-height: 1.45;
     background: color-mix(in oklab, var(--color-void) 72%, transparent);
-    transform: translate3d(
-      var(--card-x, -200vw),
-      calc(var(--card-y, 0px) + (1 - var(--reveal, 1)) * 1rem),
-      0
-    );
+    transform: translateY(calc(-50% + (1 - var(--reveal, 1)) * 1rem));
   }
 
   html[data-scene="on"] #main > [data-planet] > article:focus-within {
-    transform: translate3d(var(--card-x, -200vw), var(--card-y, 0px), 0);
+    transform: translateY(-50%);
   }
 
   html[data-scene="on"] #main > [data-planet] > article h2 {
@@ -174,36 +168,6 @@
 
   html[data-scene="on"] #main > [data-planet] > article ul {
     font-size: 0.8125rem;
-  }
-
-  /* Connector from the card's facing edge to the planet's rim. */
-  html[data-scene="on"] #main > [data-planet] > article::after {
-    content: "";
-    position: absolute;
-    left: var(--conn-x, 0px);
-    top: var(--conn-y, 0px);
-    width: var(--conn-len, 0px);
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      color-mix(in oklab, var(--color-sunlight) 85%, transparent),
-      color-mix(in oklab, var(--color-sunlight) 15%, transparent)
-    );
-    transform-origin: 0 50%;
-    transform: rotate(var(--conn-angle, 0rad));
-    pointer-events: none;
-  }
-
-  html[data-scene="on"] #main > [data-planet] > article::before {
-    content: "";
-    position: absolute;
-    left: calc(var(--conn-x, 0px) - 3px);
-    top: calc(var(--conn-y, 0px) - 3px);
-    width: 6px;
-    height: 6px;
-    border-radius: 9999px;
-    background: var(--color-sunlight);
-    pointer-events: none;
   }
 }
 
