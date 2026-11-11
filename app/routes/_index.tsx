@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { formatPeriod } from "~/content/format";
 import { contact, site } from "~/content/meta";
 import { planets } from "~/content/planets";
+import { installCardFit } from "~/lib/card-fit";
 import { installPanelFades } from "~/lib/panels";
 import { SceneMount } from "~/scene/SceneMount";
 
@@ -50,6 +51,7 @@ const link = "text-nebula underline underline-offset-2 hover:text-starlight";
  */
 export default function Index() {
   useEffect(() => installPanelFades(), []);
+  useEffect(() => installCardFit(), []);
   return (
     <>
       <div

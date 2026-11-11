@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  footerFade,
+  FOOTER_EXIT_SPAN,
   REVEAL_APPROACH_START,
   REVEAL_DEPART_END,
   REVEAL_FULL,
@@ -34,5 +36,16 @@ describe("revealAt", () => {
       const shown = [0, 1, 2, 3, 4, 5].filter((own) => revealAt(stop, own) > 0);
       expect(shown.length).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("footerFade", () => {
+  it("is 1 until the footer enters, 0 once it is well in view", () => {
+    expect(footerFade(900, 720)).toBe(1); // below the viewport
+    expect(footerFade(720, 720)).toBe(1); // just touching the bottom
+    const half = footerFade(720 - (FOOTER_EXIT_SPAN * 720) / 2, 720);
+    expect(half).toBeCloseTo(0.5);
+    expect(footerFade(720 - FOOTER_EXIT_SPAN * 720, 720)).toBe(0);
+    expect(footerFade(0, 720)).toBe(0);
   });
 });

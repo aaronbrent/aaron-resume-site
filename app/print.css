@@ -45,6 +45,15 @@
     break-inside: avoid;
   }
 
+  /* Scene choreography is screen-only; this is the belt to that brace. */
+  #main > header > *,
+  #main article {
+    opacity: 1 !important;
+    transform: none !important;
+    position: static !important;
+    max-height: none !important;
+  }
+
   /* Each section is a full viewport on screen; on paper they just stack. */
   section,
   header,

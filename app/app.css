@@ -84,24 +84,12 @@
 }
 
 /*
- * Panel choreography (W4). --reveal comes from app/lib/panels.ts; it only
- * takes effect once the 3D scene has drawn (html[data-scene="on"]), so
- * no-JS, reduced-motion and no-WebGL visitors always see every panel.
+ * Panel choreography lives in the fixed-card block below: fades only make
+ * sense for panels that stay put while the camera moves. Panels in normal
+ * flow (phones, short windows, the overflow fallback, print, no-JS,
+ * reduced motion) are never faded — they scroll and stay readable.
  */
-@media (prefers-reduced-motion: no-preference) {
-  html[data-scene="on"] #main > header > *,
-  html[data-scene="on"] #main > [data-planet] > article {
-    opacity: var(--reveal, 1);
-    transform: translateY(calc((1 - var(--reveal, 1)) * 1.5rem));
-  }
-
-  /* Keyboard users always see the control that has focus. */
-  html[data-scene="on"] #main > header > *:focus-within,
-  html[data-scene="on"] #main > [data-planet] > article:focus-within {
-    opacity: 1;
-    transform: none;
-  }
-
+@media screen and (prefers-reduced-motion: no-preference) {
   .scroll-cue-arrow {
     animation: scroll-cue 1.8s ease-in-out infinite;
   }
@@ -123,7 +111,7 @@
  * the pre-paint html.scene-likely flag, never the async probe, so the
  * layout never shifts after first paint.
  */
-@media (max-width: 767.98px) {
+@media screen and (max-width: 767.98px) {
   html.scene-likely #main > header {
     justify-content: flex-end;
     padding-bottom: 14svh;
@@ -138,11 +126,25 @@
 /*
  * Role cards on wide landscape screens with the scene drawing: a glass panel
  * fixed to the left, vertically centred, while the camera frames the planet
- * on the right. --reveal (app/lib/panels.ts) fades it in only on final
- * approach. Phones and short windows keep the card in flow below the planet.
+ * on the right. --reveal (app/lib/panels.ts) fades the hero and each card;
+ * cards fade in only on final approach. Screen only (print gets the plain
+ * document). Hidden cards don't take clicks (data-revealed gates pointer
+ * events), and html.cards-flow (app/lib/card-fit.ts) drops back to normal
+ * flow when a card can't fit the window. Phones keep the card in flow.
  */
-@media (min-width: 768px) and (orientation: landscape) and (min-height: 520px) {
-  html[data-scene="on"] #main > [data-planet] > article {
+@media screen and (prefers-reduced-motion: no-preference) and (min-width: 768px) and (orientation: landscape) and (min-height: 520px) {
+  html[data-scene="on"]:not(.cards-flow) #main > header > * {
+    opacity: var(--reveal, 1);
+    transform: translateY(calc((1 - var(--reveal, 1)) * 1.5rem));
+  }
+
+  /* Keyboard users always see the control that has focus. */
+  html[data-scene="on"]:not(.cards-flow) #main > header > *:focus-within {
+    opacity: 1;
+    transform: none;
+  }
+
+  html[data-scene="on"]:not(.cards-flow) #main > [data-planet] > article {
     position: fixed;
     top: 50%;
     left: clamp(1.5rem, 4vw, 4rem);
@@ -154,19 +156,27 @@
     font-size: 0.875rem;
     line-height: 1.45;
     background: color-mix(in oklab, var(--color-void) 72%, transparent);
+    opacity: var(--reveal, 1);
     transform: translateY(calc(-50% + (1 - var(--reveal, 1)) * 1rem));
+    /* Invisible cards must not block what's under them. */
+    pointer-events: none;
   }
 
-  html[data-scene="on"] #main > [data-planet] > article:focus-within {
+  html[data-scene="on"]:not(.cards-flow) #main > [data-planet][data-revealed] > article {
+    pointer-events: auto;
+  }
+
+  html[data-scene="on"]:not(.cards-flow) #main > [data-planet] > article:focus-within {
+    opacity: 1;
     transform: translateY(-50%);
   }
 
-  html[data-scene="on"] #main > [data-planet] > article h2 {
+  html[data-scene="on"]:not(.cards-flow) #main > [data-planet] > article h2 {
     font-size: 1.875rem;
     line-height: 1.1;
   }
 
-  html[data-scene="on"] #main > [data-planet] > article ul {
+  html[data-scene="on"]:not(.cards-flow) #main > [data-planet] > article ul {
     font-size: 0.8125rem;
   }
 }

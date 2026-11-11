@@ -14,6 +14,7 @@ test.describe("flight through the system (scene on)", () => {
 
   test("each planet's role and period are shown when the camera parks there", async ({
     page,
+    isMobile,
   }) => {
     // Five parks, each re-rendering a few software-GL frames.
     test.setTimeout(90_000);
@@ -28,7 +29,9 @@ test.describe("flight through the system (scene on)", () => {
       await expect
         .poll(() => card.evaluate((el) => Number(getComputedStyle(el).opacity)))
         .toBeGreaterThan(0.99);
-      // …and its neighbours are faded out.
+      // …and, where cards are fixed (desktop), its neighbours are faded out.
+      // Phone cards sit in normal flow and are never faded.
+      if (isMobile) continue;
       for (const other of PLANETS.filter((p) => p.id !== planet.id)) {
         const o = await page
           .locator(`#${other.id} > article`)
@@ -38,7 +41,11 @@ test.describe("flight through the system (scene on)", () => {
     }
   });
 
-  test("the hero fades as the camera leaves the sun, and returns", async ({ page }) => {
+  test("the hero fades as the camera leaves the sun, and returns", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, "phones keep everything in flow, unfaded");
     // The fade applies to the hero plate (opacity isn't inherited, so read it there).
     const plate = page.locator("[data-hero-plate]");
     const opacity = () => plate.evaluate((el) => Number(getComputedStyle(el).opacity));
@@ -84,7 +91,11 @@ test.describe("flight through the system (scene on)", () => {
     await expect(page.locator("#topstep")).toBeInViewport({ ratio: 0.9 });
   });
 
-  test("deep links reveal the right panel without a scroll", async ({ page }) => {
+  test("deep links reveal the right panel without a scroll", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, "phones keep every card in flow, unfaded");
     // A fresh load (not a same-document hash change): the browser restores
     // the anchor before the app attaches its scroll listener.
     await page.goto("about:blank");
@@ -243,5 +254,112 @@ test.describe("role cards", () => {
     expect(await card.evaluate((el) => getComputedStyle(el).position)).toBe("static");
     const top = await card.evaluate((el) => el.getBoundingClientRect().top);
     expect(top).toBeGreaterThan(page.viewportSize()!.height * 0.3);
+  });
+});
+
+test.describe("review fixes (Codex)", () => {
+  /** The element hit-tested at the centre of `selector`'s first match. */
+  const hitAtCentre = (page: import("@playwright/test").Page, selector: string) =>
+    page.evaluate((sel) => {
+      const el = document.querySelector(sel)!;
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return hit === el || el.contains(hit);
+    }, selector);
+
+  test("hidden fixed cards never block the hero links", async ({ page, isMobile }) => {
+    test.skip(isMobile, "fixed cards are a desktop layout");
+    await page.goto(QA_URL);
+    await waitForScene(page);
+    await parkAtStop(page, 0);
+    for (const href of ["/resume", "/aaron-ellis-resume.pdf"]) {
+      expect(await hitAtCentre(page, `#main > header a[href="${href}"]`), href).toBe(
+        true,
+      );
+    }
+    await page.locator('#main > header a[href="/resume"]').click();
+    await expect(page).toHaveURL(/\/resume\/?$/);
+  });
+
+  test("the last card leaves before the contact footer", async ({ page, isMobile }) => {
+    test.skip(isMobile, "fixed cards are a desktop layout");
+    await page.goto(QA_URL);
+    await waitForScene(page);
+    await page.evaluate(() =>
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: "instant",
+      }),
+    );
+    const topstep = page.locator("#topstep > article");
+    await expect
+      .poll(() => topstep.evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .toBeLessThan(0.01);
+    for (const sel of [
+      'footer a[href^="mailto:"]',
+      'footer a[href*="github.com"]',
+      'footer a[href*="linkedin.com"]',
+      'footer a[href="/resume"]',
+    ]) {
+      expect(await hitAtCentre(page, sel), sel).toBe(true);
+    }
+  });
+
+  test("phone cards stay readable to the end of their text", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, "phone layout");
+    await page.goto(QA_URL);
+    await waitForScene(page);
+    // Scroll until SoFi's last line sits near the bottom of the screen —
+    // well past the point where fixed cards would have faded.
+    await page.evaluate(() => {
+      const card = document.querySelector("#sofi > article")!;
+      const bottom = card.getBoundingClientRect().bottom + window.scrollY;
+      window.scrollTo({ top: bottom - window.innerHeight + 16, behavior: "instant" });
+    });
+    await page.waitForTimeout(500);
+    const opacity = await page
+      .locator("#sofi > article")
+      .evaluate((el) => Number(getComputedStyle(el).opacity));
+    expect(opacity).toBe(1);
+  });
+
+  test.describe("short landscape window (768×520)", () => {
+    test.use({ viewport: { width: 768, height: 520 } });
+
+    test("cards that can't fit fall back to normal flow", async ({ page, isMobile }) => {
+      test.skip(isMobile, "landscape desktop window");
+      test.setTimeout(90_000);
+      await page.goto(QA_URL);
+      await waitForScene(page);
+      for (const [i, planet] of PLANETS.entries()) {
+        await parkAtStop(page, i + 1);
+        const card = page.locator(`#${planet.id} > article`);
+        const state = await card.evaluate((el) => ({
+          position: getComputedStyle(el).position,
+          overflow: el.scrollHeight > el.clientHeight + 1,
+          flow: document.documentElement.classList.contains("cards-flow"),
+        }));
+        // Either it fits as a fixed card, or every card is back in flow.
+        if (state.position === "fixed") expect(state.overflow, planet.id).toBe(false);
+        else expect(state.flow, planet.id).toBe(true);
+      }
+    });
+  });
+
+  test("printing after the scene loads shows every role, in flow", async ({ page }) => {
+    await page.goto(QA_URL);
+    await waitForScene(page);
+    await parkAtStop(page, 3);
+    await page.emulateMedia({ media: "print" });
+    for (const planet of PLANETS) {
+      const style = await page.locator(`#${planet.id} > article`).evaluate((el) => ({
+        opacity: getComputedStyle(el).opacity,
+        position: getComputedStyle(el).position,
+      }));
+      expect(style, planet.id).toEqual({ opacity: "1", position: "static" });
+    }
   });
 });
