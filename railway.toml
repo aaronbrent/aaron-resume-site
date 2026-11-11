@@ -1,0 +1,13 @@
+# Railway service config (docs/PLAN-STAR-SYSTEM.md §8).
+# The site is fully prerendered; Railway builds it and serves build/client
+# as static files (scripts/serve.mjs). Railway injects $PORT.
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm build"
+
+[deploy]
+startCommand = "pnpm start"
+healthcheckPath = "/"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

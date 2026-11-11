@@ -1,51 +1,89 @@
 /**
- * CI gate (PLAN-3D §7): the 3D chunk stays lazy and within budget, and the
- * critical path (everything that isn't the DropIn chunk) keeps v1's budget.
- *   pnpm bundle:check   (requires a fresh `pnpm build`)
+ * CI gate (docs/PLAN-STAR-SYSTEM.md §7, §11). Requires a fresh `pnpm build`.
+ *   pnpm bundle:check
+ *
+ * - Critical path = every script the prerendered pages load up front (their
+ *   modulepreload links + entry imports), measured from the built HTML, not
+ *   guessed. It must stay ≤ 130 KB gz and must not contain three.js.
+ * - Lazy chunks = every other script (today: the Scene chunk). They all
+ *   count toward the 3D budget, ≤ 235 KB gz, so a future split of drei or
+ *   other scene code into its own async chunk can't slip past both budgets.
+ * - Dev-only tooling (leva) must not ship anywhere.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
-const DROPIN_BUDGET_KB = 180;
+const SCENE_BUDGET_KB = 235;
 const CRITICAL_BUDGET_KB = 130;
+const REQUIRE_3D_DEFAULT = true;
+const require3d = process.env.REQUIRE_3D
+  ? process.env.REQUIRE_3D === "1"
+  : REQUIRE_3D_DEFAULT;
 
-const dir = fileURLToPath(new URL("../build/client/assets", import.meta.url));
-let dropinKb = 0;
+const client = fileURLToPath(new URL("../build/client", import.meta.url));
+const assets = join(client, "assets");
+
+/** Asset file names a page loads up front. */
+export function criticalScripts(html: string): string[] {
+  const refs = [
+    ...html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="\/assets\/([^"]+\.js)"/g),
+    ...html.matchAll(/<script[^>]+src="\/assets\/([^"]+\.js)"/g),
+    ...html.matchAll(/import\(["']\/assets\/([^"']+\.js)["']\)/g),
+  ].map((m) => m[1]!);
+  return [...new Set(refs)];
+}
+
+const critical = new Set<string>();
+for (const page of ["index.html", "resume/index.html"]) {
+  for (const f of criticalScripts(readFileSync(join(client, page), "utf8")))
+    critical.add(f);
+}
+
+let sceneKb = 0;
 let criticalKb = 0;
+let sawRenderer = false;
+const failures: string[] = [];
 const rows: string[] = [];
-for (const file of readdirSync(dir).sort()) {
+for (const file of readdirSync(assets).sort()) {
   if (!file.endsWith(".js")) continue;
-  const source = readFileSync(join(dir, file));
+  const source = readFileSync(join(assets, file));
   const kb = gzipSync(source, { level: 9 }).length / 1024;
-  // The DropIn chunk is the one that carries the renderer.
-  const isDropin = source.includes("WebGLRenderer");
-  if (isDropin) dropinKb += kb;
-  else criticalKb += kb;
-  rows.push(`  ${isDropin ? "3D " : "    "}${kb.toFixed(1).padStart(7)} kB gz  ${file}`);
+  const text = source.toString();
+  const hasThree = text.includes("WebGLRenderer");
+  const isCritical = critical.has(file);
+  if (isCritical) {
+    criticalKb += kb;
+    if (hasThree) failures.push(`three.js is on the critical path (${file})`);
+  } else {
+    sceneKb += kb;
+    if (hasThree) sawRenderer = true;
+  }
+  // leva's store/panel identifiers; dev-only, must be tree-shaken out.
+  if (/\bleva\b|useControls\(|LevaPanel/.test(text)) {
+    failures.push(`leva (dev-only) found in production chunk ${file}`);
+  }
+  const tag = isCritical ? "crit" : hasThree ? " 3D " : "lazy";
+  rows.push(`  ${tag} ${kb.toFixed(1).padStart(7)} kB gz  ${file}`);
 }
 console.log(rows.join("\n"));
 console.log(
   `critical path ${criticalKb.toFixed(1)} kB gz (budget ${CRITICAL_BUDGET_KB}) · ` +
-    `3D chunk ${dropinKb.toFixed(1)} kB gz (budget ${DROPIN_BUDGET_KB})`,
+    `lazy 3D ${sceneKb.toFixed(1)} kB gz (budget ${SCENE_BUDGET_KB})`,
 );
-let failed = false;
-if (dropinKb === 0) {
-  console.error("✗ no chunk containing WebGLRenderer found — is the build fresh?");
-  failed = true;
+if (critical.size === 0) failures.push("no critical scripts found in the built HTML");
+if (!sawRenderer && require3d) {
+  failures.push("no lazy chunk containing WebGLRenderer found — is the build fresh?");
 }
-if (dropinKb > DROPIN_BUDGET_KB) {
-  console.error(
-    `✗ 3D chunk over budget: ${dropinKb.toFixed(1)} > ${DROPIN_BUDGET_KB} kB gz`,
-  );
-  failed = true;
+if (sceneKb > SCENE_BUDGET_KB) {
+  failures.push(`3D chunk over budget: ${sceneKb.toFixed(1)} > ${SCENE_BUDGET_KB} kB gz`);
 }
 if (criticalKb > CRITICAL_BUDGET_KB) {
-  console.error(
-    `✗ critical path over budget: ${criticalKb.toFixed(1)} > ${CRITICAL_BUDGET_KB} kB gz`,
+  failures.push(
+    `critical path over budget: ${criticalKb.toFixed(1)} > ${CRITICAL_BUDGET_KB} kB gz`,
   );
-  failed = true;
 }
-if (!failed) console.log("✓ bundle within PLAN-3D §7 budgets");
-process.exit(failed ? 1 : 0);
+for (const f of failures) console.error(`✗ ${f}`);
+if (failures.length === 0) console.log("✓ bundle within budgets");
+process.exit(failures.length ? 1 : 0);

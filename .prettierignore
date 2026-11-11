@@ -4,4 +4,5 @@ node_modules/
 playwright-report/
 test-results/
 pnpm-lock.yaml
-PLAN.md
+docs/archive/
+.claude/worktrees/

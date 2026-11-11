@@ -1,12 +1,19 @@
 import type { Skill } from "./types";
 
-/** Legend skills (PLAN §8): grouped Frontend / Backend / Cloud / Leadership·AI. */
+/** Skills, grouped Frontend / Backend / Cloud / Leadership·AI (listed on /resume). */
 export const skills = [
   { id: "typescript", label: "TypeScript", group: "frontend" },
   { id: "react", label: "React", group: "frontend" },
   { id: "angular", label: "Angular", group: "frontend" },
   { id: "cwv", label: "Web performance (Core Web Vitals)", group: "frontend" },
   { id: "tailwind", label: "Tailwind CSS", group: "frontend" },
+  { id: "canvas", label: "Canvas rendering", group: "frontend" },
+  { id: "webworkers", label: "Web Workers & SharedArrayBuffer", group: "frontend" },
+  {
+    id: "performance",
+    label: "Rendering performance (60fps budgets)",
+    group: "frontend",
+  },
   { id: "node", label: "Node.js", group: "backend" },
   { id: "api", label: "API design", group: "backend" },
   { id: "payments", label: "Payments & escrow integrations", group: "backend" },
