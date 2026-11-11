@@ -1,5 +1,4 @@
 import type { PlanetVisual } from "~/content/types";
-import { planetPosition } from "../layout";
 import type { Vec3 } from "../types";
 import { BIOME_LOOK } from "./config";
 
@@ -19,15 +18,12 @@ export interface LabFraming {
  * (and its rings) into ~70% of the frame height.
  */
 export function labFraming(
-  visual: Pick<
-    PlanetVisual,
-    "biome" | "size" | "hasRings" | "orbitRadius" | "orbitAngle"
-  >,
+  visual: Pick<PlanetVisual, "biome" | "size" | "hasRings">,
+  planet: Vec3,
   fovDeg: number,
   aspect = 1.6,
   swing = 1.4,
 ): LabFraming {
-  const planet = planetPosition(visual);
   const look = BIOME_LOOK[visual.biome];
   const extent = visual.size * (visual.hasRings ? look.ring.outer : 1.6);
   const tanHalf = Math.tan((fovDeg * Math.PI) / 360);

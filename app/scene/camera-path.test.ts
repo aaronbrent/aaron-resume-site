@@ -1,15 +1,24 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
-import { planets } from "~/content/planets";
 import { dwellRange } from "~/lib/progress";
-import { buildCameraPath, easeInOutCubic, heroPose, PAN_END } from "./camera-path";
+import {
+  buildCameraPath,
+  easeInOutCubic,
+  heroPose,
+  MIN_SWEEP,
+  SETTLE_START,
+  SLING_TIME,
+  SUN_KEEP_OUT,
+} from "./camera-path";
 import { SUN_RADIUS } from "./constants";
-import { planetPosition } from "./layout";
+import { generateLayout, LAYOUT_RULES } from "./system-layout";
 
+const layout = generateLayout();
+const planets = layout.planets;
 const path = buildCameraPath(planets);
 const v = (a: readonly number[]) => new Vector3(a[0], a[1], a[2]);
 const n = planets.length;
-const centre = (i: number) => v(planetPosition(planets[i]!.visual));
+const centre = (i: number) => v(planets[i]!.position);
 const deg = (r: number) => (r * 180) / Math.PI;
 
 /** Progress at travel-local t on leg k (dwell k → dwell k + 1). */
@@ -20,25 +29,8 @@ function legProgress(k: number, t: number): number {
   return start + (end - start) * t;
 }
 
-/** How the next planet appears from parked dwell k: yaw (+ left), pitch (+ up), degrees. */
-function seen(k: number) {
-  const d = path.dwells[k]!;
-  const pos = v(d.position);
-  const view = v(d.target).sub(pos).normalize();
-  const next = centre(k).sub(pos).normalize();
-  const vh = new Vector3(view.x, 0, view.z).normalize();
-  const nh = new Vector3(next.x, 0, next.z).normalize();
-  return {
-    yaw: deg(Math.atan2(vh.clone().cross(nh).y, vh.dot(nh))),
-    pitch: deg(Math.asin(next.y) - Math.asin(view.y)),
-  };
-}
-
-function segmentDistance(a: Vector3, b: Vector3, p: Vector3): number {
-  const ab = b.clone().sub(a);
-  const t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq()));
-  return a.clone().addScaledVector(ab, t).distanceTo(p);
-}
+/** Body slung around on leg k: the sun, then each planet in turn. */
+const body = (k: number) => (k === 0 ? new Vector3() : centre(k - 1));
 
 describe("camera path", () => {
   it("starts on the hero pose and ends parked at the outermost planet", () => {
@@ -61,82 +53,107 @@ describe("camera path", () => {
     });
   });
 
+  it("leaves and arrives exactly: legs join the dwell poses with no jump", () => {
+    for (let k = 0; k < n; k++) {
+      const start = path.poseAt(legProgress(k, 0));
+      const end = path.poseAt(legProgress(k, 1));
+      expect(v(start.target).distanceTo(v(path.dwells[k]!.target))).toBeLessThan(1e-6);
+      expect(v(end.target).distanceTo(v(path.dwells[k + 1]!.target))).toBeLessThan(1e-6);
+    }
+  });
+
   it("frames each planet at a size-scaled distance, its sunlit face toward the camera", () => {
     planets.forEach((p, i) => {
       const cam = v(path.dwells[i + 1]!.position);
       const planet = centre(i);
       const d = cam.distanceTo(planet);
-      expect(d).toBeGreaterThan(p.visual.size * 2.5);
-      expect(d).toBeLessThan(p.visual.size * 8 + 2);
+      expect(d).toBeGreaterThan(p.size * 2.5);
+      expect(d).toBeLessThan(p.size * 8 + 2);
+      expect(d).toBeGreaterThan(p.keepOut);
       // Angle between "toward the camera" and "toward the sun" at the planet.
       const lit = deg(cam.clone().sub(planet).angleTo(planet.clone().negate()));
-      expect(lit, `${p.id} lit-side angle`).toBeLessThan(95);
+      expect(lit, `${p.id} lit-side angle`).toBeLessThan(80);
     });
   });
 
-  it("pans first: holds position and turns to look straight at the next planet", () => {
-    for (let k = 0; k < n; k++) {
-      const start = v(path.dwells[k]!.position);
-      const pose = path.poseAt(legProgress(k, PAN_END));
-      const pos = v(pose.position);
-      const leg = start.distanceTo(v(path.dwells[k + 1]!.position));
-      expect(pos.distanceTo(start)).toBeLessThan(leg * 0.1);
-      const look = v(pose.target).sub(pos).normalize();
-      const toNext = centre(k).sub(pos).normalize();
-      expect(deg(look.angleTo(toNext)), `leg ${k} aim`).toBeLessThan(3);
-    }
-  });
-
-  it("then dollies in a straight line: no swooping up or down", () => {
-    for (let k = 0; k < n; k++) {
-      const yA = path.dwells[k]!.position[1];
-      const yB = path.dwells[k + 1]!.position[1];
-      for (let t = PAN_END; t <= 1; t += 0.05) {
-        const y = path.poseAt(legProgress(k, t)).position[1];
-        expect(y).toBeGreaterThanOrEqual(Math.min(yA, yB) - 0.5);
-        expect(y).toBeLessThanOrEqual(Math.max(yA, yB) + 0.5);
+  it("slingshots: each leg swings round the body it leaves, close but clear", () => {
+    path.legs.forEach((leg, k) => {
+      expect(leg.sweep, `leg ${k} sweep`).toBeGreaterThanOrEqual(MIN_SWEEP - 1e-6);
+      expect(leg.sweep, `leg ${k} sweep`).toBeLessThanOrEqual(LAYOUT_RULES.maxSweep);
+      const c = body(k);
+      expect(v(leg.body).distanceTo(c)).toBeLessThan(1e-9);
+      let closest = Infinity;
+      for (let t = 0; t <= SLING_TIME + 0.05; t += 0.005) {
+        closest = Math.min(
+          closest,
+          v(path.poseAt(legProgress(k, t)).position).distanceTo(c),
+        );
       }
-    }
+      const keepOut = k === 0 ? SUN_KEEP_OUT : planets[k - 1]!.keepOut;
+      expect(closest, `leg ${k} periapsis`).toBeGreaterThan(keepOut);
+      expect(closest, `leg ${k} periapsis`).toBeLessThan(leg.periapsis * 1.3);
+      // It really goes round: the bearing of the camera about the body
+      // changes by about the sweep during the sling.
+      const a = v(path.poseAt(legProgress(k, 0)).position)
+        .sub(c)
+        .normalize();
+      const b = v(path.poseAt(legProgress(k, SLING_TIME)).position)
+        .sub(c)
+        .normalize();
+      if (leg.sweep < Math.PI * 0.9) {
+        expect(deg(a.angleTo(b)), `leg ${k} swing`).toBeGreaterThan(deg(leg.sweep) * 0.8);
+      }
+    });
   });
 
-  it("keeps every flight leg clear of the sun and the other planets", () => {
-    for (let k = 0; k < n; k++) {
-      const a = v(path.dwells[k]!.position);
-      const b = v(path.dwells[k + 1]!.position);
-      expect(segmentDistance(a, b, new Vector3())).toBeGreaterThan(SUN_RADIUS * 2);
-      planets.forEach((p, i) => {
-        if (i === k || i === k - 1) return; // the planets it leaves and approaches
-        expect(segmentDistance(a, b, centre(i)), `leg ${k} vs ${p.id}`).toBeGreaterThan(
-          p.visual.size * 2,
+  it("flies the final approach straight along the parked view direction", () => {
+    path.legs.forEach((leg, k) => {
+      const end = v(path.dwells[k + 1]!.position);
+      const into = centre(k).sub(end).normalize();
+      // The approach starts on the line through the dwell and the planet,
+      // behind the camera.
+      const back = end.clone().sub(v(leg.approachStart));
+      expect(deg(back.clone().normalize().angleTo(into)), `leg ${k}`).toBeLessThan(0.01);
+      // Late in the leg the camera is on that line (give or take the dwell
+      // drift, which is already ramping in).
+      const pos = v(path.poseAt(legProgress(k, 0.98)).position);
+      const off = pos.clone().sub(end);
+      const lateral = off.clone().addScaledVector(into, -off.dot(into)).length();
+      expect(lateral, `leg ${k} lateral`).toBeLessThan(0.36);
+    });
+  });
+
+  it("keeps every flight leg clear of the sun and every planet's keep-out", () => {
+    const samples = 3000;
+    for (let i = 0; i <= samples; i++) {
+      const pos = v(path.poseAt(i / samples).position);
+      expect(pos.length()).toBeGreaterThan(SUN_KEEP_OUT);
+      planets.forEach((p, j) => {
+        expect(pos.distanceTo(centre(j)), `${p.id} at ${i / samples}`).toBeGreaterThan(
+          Math.max(p.keepOut, p.size * 2),
         );
       });
     }
   });
 
-  it("varies direction: left and right, up and down, and one nearly straight ahead", () => {
-    const legs = planets.map((_, k) => seen(k));
-    let signChanges = 0;
-    for (let k = 1; k < legs.length; k++) {
-      if (Math.sign(legs[k]!.yaw) !== Math.sign(legs[k - 1]!.yaw)) signChanges++;
-    }
-    expect(signChanges).toBeGreaterThanOrEqual(2);
-    expect(legs.some((l) => l.pitch > 8)).toBe(true);
-    expect(legs.some((l) => l.pitch < -8)).toBe(true);
-    expect(legs.some((l) => Math.abs(l.yaw) < 15)).toBe(true);
-  });
-
   it("is continuous: no jumps between consecutive samples", () => {
+    // Legs vary a lot in length, so bound each step against its leg's
+    // average step: easing peaks at ~1.5–2× the mean speed.
+    const samples = 4000;
     let prev = v(path.poseAt(0).position);
-    let maxStep = 0;
-    for (let i = 1; i <= 4000; i++) {
-      const next = v(path.poseAt(i / 4000).position);
-      maxStep = Math.max(maxStep, next.distanceTo(prev));
+    for (let i = 1; i <= samples; i++) {
+      const p = i / samples;
+      const next = v(path.poseAt(p).position);
+      const leg = Math.min(n - 1, Math.floor(p * n - 0.25));
+      const mean = path.legs[Math.max(0, leg)]!.length / (samples / n / 2);
+      expect(next.distanceTo(prev)).toBeLessThan(Math.max(0.05, mean * 2.5));
       prev = next;
     }
-    expect(maxStep).toBeLessThan(0.5);
   });
 
   it("aim is continuous too (no snapping look direction)", () => {
+    // The sling whips the view round by design; 2.5° per 1/4000 of the
+    // flight (≈ 1 px of scroll per sample) is the measured peak plus margin.
     let prev = v(path.poseAt(0).target)
       .sub(v(path.poseAt(0).position))
       .normalize();
@@ -147,7 +164,16 @@ describe("camera path", () => {
       maxTurn = Math.max(maxTurn, deg(dir.angleTo(prev)));
       prev = dir;
     }
-    expect(maxTurn).toBeLessThan(2);
+    expect(maxTurn).toBeLessThan(2.5);
+  });
+
+  it("is looking at the next planet when the role card starts to fade in", () => {
+    for (let k = 0; k < n; k++) {
+      const pose = path.poseAt(legProgress(k, SETTLE_START));
+      const look = v(pose.target).sub(v(pose.position)).normalize();
+      const toPlanet = centre(k).sub(v(pose.position)).normalize();
+      expect(deg(look.angleTo(toPlanet)), `leg ${k}`).toBeLessThan(3);
+    }
   });
 
   it("never flies through the sun", () => {

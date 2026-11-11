@@ -15,7 +15,6 @@ import {
   BIOME_LOOK,
   DEFAULT_DETAIL,
   moonOffset,
-  moonSpecs,
   QA_TIME,
   ringSegments,
   ringUv,
@@ -66,7 +65,11 @@ interface PlanetParts {
   dispose: () => void;
 }
 
-function buildPlanet(visual: PlanetVisual, detail: number): PlanetParts {
+function buildPlanet(
+  visual: PlanetVisual,
+  specs: readonly MoonSpec[],
+  detail: number,
+): PlanetParts {
   const look = BIOME_LOOK[visual.biome];
   const { size } = visual;
   const [ws, hs] = sphereSegments(size, detail);
@@ -83,12 +86,16 @@ function buildPlanet(visual: PlanetVisual, detail: number): PlanetParts {
     : null;
   const center = new Vector3();
   const ring = visual.hasRings ? createRingMaterial(visual, center) : null;
-  const specs = moonSpecs(visual);
   const [mw, mh] = sphereSegments(0.1, detail);
   const moonGeo = specs.length ? new SphereGeometry(1, mw, mh) : null;
-  const moons = specs.map((spec) => ({
+  const moons = specs.map((spec, i) => ({
     spec,
-    material: createBodyMaterial(visual, "moon", spec.seed),
+    material: createBodyMaterial(
+      visual,
+      "moon",
+      spec.seed,
+      visual.palette.moons?.[i] ?? visual.palette.atmosphere,
+    ),
   }));
   const timed = [body, ...(clouds ? [clouds] : [])];
   const disposables: (BufferGeometry | Material | null)[] = [
@@ -128,12 +135,16 @@ function buildPlanet(visual: PlanetVisual, detail: number): PlanetParts {
  */
 export function PlanetBody({
   visual,
+  moons,
   position,
   qa,
   detail = DEFAULT_DETAIL,
 }: PlanetBodyProps & PlanetBodyExtras) {
   const look = BIOME_LOOK[visual.biome];
-  const parts = useMemo(() => buildPlanet(visual, detail), [visual, detail]);
+  const parts = useMemo(
+    () => buildPlanet(visual, moons, detail),
+    [visual, moons, detail],
+  );
   useEffect(() => () => parts.dispose(), [parts]);
 
   const [px, py, pz] = position;

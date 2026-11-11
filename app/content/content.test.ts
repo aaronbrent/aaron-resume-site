@@ -45,8 +45,16 @@ describe("planets", () => {
     }
   });
 
-  it("keeps elevations modest (|y| ≤ 20)", () => {
-    for (const p of planets) expect(Math.abs(p.visual.elevation)).toBeLessThanOrEqual(20);
+  it("uses hex brand palettes, with one moon color per moon", () => {
+    const HEX = /^#[0-9a-f]{6}$/i;
+    for (const p of planets) {
+      const { base, accent, atmosphere } = p.visual.palette;
+      for (const c of [base, accent, atmosphere]) expect(c, p.id).toMatch(HEX);
+      const moons: readonly string[] =
+        "moons" in p.visual.palette ? p.visual.palette.moons : [];
+      expect(moons, p.id).toHaveLength(p.visual.moonCount);
+      for (const c of moons) expect(c, p.id).toMatch(HEX);
+    }
   });
 
   it("places orbits strictly outward with unique nicknames", () => {

@@ -164,12 +164,12 @@ PlanetSurface planetSurface(vec3 p){
   s.alpha=a*0.58*(1.0-smoothstep(0.78,0.96,abs(p.y)));
   s.roughness=1.0;
 #else
-  // moon: soft grey, tinted toward the planet's atmosphere, with craters
+  // moon: soft grey tinted with its own brand color (uBase), with craters
   vec3 q=p*2.6+vec3(uSeed);
   float n=fbm(q);
   float c=snoise(q*1.8);
   float crater=smoothstep(0.35,0.6,c)*(1.0-smoothstep(0.6,0.72,c));
-  vec3 rock=mix(vec3(0.5,0.49,0.52),uAtmos*0.75,0.3);
+  vec3 rock=mix(vec3(0.5,0.49,0.52),uBase,0.5);
   s.albedo=rock*(0.82+0.22*n)*(1.0-crater*0.35)+crater*0.06;
   s.roughness=0.95;
 #endif
