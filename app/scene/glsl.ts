@@ -1,7 +1,11 @@
+/*! webgl-noise (https://github.com/ashima/webgl-noise), MIT licence.
+ * Copyright (C) 2011 by Ashima Arts (Simplex noise)
+ * Copyright (C) 2011-2016 by Stefan Gustavson (Classic noise and others)
+ * Full notice: THIRD_PARTY_NOTICES.md and /third-party-notices.txt. */
 /**
  * Shared GLSL chunks for the scene's procedural shaders (no textures are
- * ever downloaded). 3D simplex noise: Ashima Arts / Stefan Gustavson, MIT
- * licence (github.com/ashima/webgl-noise). It is arithmetic-only (no sin()
+ * ever downloaded). 3D simplex noise: webgl-noise (Ashima Arts / Stefan
+ * Gustavson; notice above). It is arithmetic-only (no sin()
  * hash), so it is stable across runs on a given GPU — `?qa=1` relies on that.
  */
 export const SIMPLEX_3D = /* glsl */ `

@@ -76,13 +76,16 @@ export class FpsGovernor {
   ) {}
 
   /**
-   * Discards the current window. Call when the page was hidden: a background
-   * tab's long frames say nothing about the GPU. (Long frames are otherwise
-   * counted — on the slowest devices they are the signal.)
+   * Discards the current window and restarts the warm-up. Call when the page
+   * was hidden: a background tab's long frames say nothing about the GPU,
+   * and the first frame back carries the whole hidden interval as its delta
+   * — the warm-up absorbs it instead of judging it. (Long frames are
+   * otherwise counted — on the slowest devices they are the signal.)
    */
   reset(): void {
     this.elapsed = 0;
     this.frames = 0;
+    this.warm = 0;
   }
 
   /** Returns true when the last window averaged below MIN_FPS. */

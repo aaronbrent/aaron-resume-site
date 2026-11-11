@@ -62,6 +62,14 @@ describe("FpsGovernor", () => {
     expect(run(new FpsGovernor(), 30, 10)).toBe(false);
   });
 
+  it("doesn't drop a tier on the first frame back from a hidden tab", () => {
+    const g = new FpsGovernor(1.5, 2);
+    expect(run(g, 60, 6)).toBe(false); // healthy, warmed up
+    g.reset(); // visibilitychange
+    expect(g.sample(30)).toBe(false); // the resumed frame spans the pause
+    expect(run(g, 60, 6)).toBe(false);
+  });
+
   it("reset() discards a window spoiled by a hidden tab", () => {
     const g = new FpsGovernor(0, 2);
     g.sample(1.9); // the tab was hidden mid-window

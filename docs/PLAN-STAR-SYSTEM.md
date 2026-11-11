@@ -167,6 +167,10 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
 
 ## 7. QA
 
+**Visual baselines** are Linux/SwiftShader renders and the suite skips on other
+platforms (`pnpm test:e2e` on a Mac runs everything else); regenerate them on Linux
+or from a CI run's artifacts.
+
 **Lesson learned:** every automated check runs on SwiftShader (software GL), so a
 real-GPU-only failure shipped once. Two guards now exist: a black-frame check
 (`e2e/support/frame.ts`: the scene never draws pure black) in the visual, scene and

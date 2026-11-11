@@ -1,10 +1,14 @@
+/*! webgl-noise (https://github.com/ashima/webgl-noise), MIT licence.
+ * Copyright (C) 2011 by Ashima Arts (Simplex noise)
+ * Copyright (C) 2011-2016 by Stefan Gustavson (Classic noise and others)
+ * Full notice: THIRD_PARTY_NOTICES.md and /third-party-notices.txt. */
 /**
  * GLSL for the planet bodies. Everything is procedural (no textures):
  * 3D simplex noise + fbm, then one surface function per body kind selected
  * by `#define PLANET_KIND` (see KIND in ./config).
  */
 
-/** 3D simplex noise (Ashima Arts / Ian McEwan, MIT) + fbm. */
+/** 3D simplex noise (webgl-noise, Ashima Arts / Ian McEwan; notice above) + fbm. */
 export const NOISE = /* glsl */ `
 vec3 pn_mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
 vec4 pn_mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}

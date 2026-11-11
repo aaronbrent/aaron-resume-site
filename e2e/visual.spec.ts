@@ -15,6 +15,9 @@ import { parkAtStop, PLANETS, QA_URL, waitForScene } from "./support/scene";
 const STOPS = ["hero", ...PLANETS.map((p) => p.id)];
 
 test.describe("scene visual regression", () => {
+  // Baselines are Linux/SwiftShader renders (CI). Other platforms rasterise
+  // differently and have no baselines, so the suite only runs on Linux.
+  test.skip(process.platform !== "linux", "visual baselines are Linux-only (CI)");
   test.describe.configure({ mode: "serial" });
   // 1× keeps baselines small and fast; the phone viewport/framing is kept.
   test.use({ deviceScaleFactor: 1 });

@@ -33,7 +33,9 @@ export function SceneMount() {
     const evaluate = () => {
       canRenderScene().then(
         (ok) => {
-          if (!cancelled) setCapable(ok);
+          // A probe started before the visitor turned on reduced motion
+          // may settle after it: honour the preference as it is now.
+          if (!cancelled) setCapable(ok && !query.matches);
         },
         () => {
           if (!cancelled) setCapable(false);

@@ -129,3 +129,28 @@ test.describe("real-visitor rendering (no qa pinning)", () => {
     expect(await blackFraction(page)).toBeGreaterThan(0.5);
   });
 });
+
+test.describe("reduced motion vs an in-flight capability probe", () => {
+  test("turning on reduced motion while the probe is pending keeps the scene off", async ({
+    page,
+  }) => {
+    // Hold back requestAnimationFrame so the WebGL probe (which resolves on
+    // the next frame) is still pending when the preference changes.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __holdRaf: boolean };
+      w.__holdRaf = true;
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (cb) =>
+        w.__holdRaf ? (setTimeout(() => raf(cb), 1500) as unknown as number) : raf(cb);
+    });
+    await page.goto(SCENE_URL);
+    await page.waitForTimeout(200);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.evaluate(() => {
+      (window as unknown as { __holdRaf: boolean }).__holdRaf = false;
+    });
+    await page.waitForTimeout(4_000);
+    await expect(page.locator("[data-scene-root] canvas")).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute("data-scene", "off");
+  });
+});
