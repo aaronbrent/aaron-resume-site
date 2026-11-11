@@ -19,3 +19,10 @@ export const QA_PARAM = "qa";
 export function isQaMode(search: string = globalThis.location?.search ?? ""): boolean {
   return new URLSearchParams(search).get(QA_PARAM) === "1";
 }
+
+/**
+ * Seed for the star-system layout (system-layout.ts): planet bearings and
+ * tilts, and every moon's orbit. Picked by eye from seeds that pass
+ * checkLayout; `?seed=N` previews others.
+ */
+export const LAYOUT_SEED = 1;

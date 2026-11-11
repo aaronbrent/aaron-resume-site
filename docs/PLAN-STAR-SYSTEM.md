@@ -20,9 +20,9 @@ planet's role card fades in on final approach.
 - **Art direction:** Pixar/Dreamworks — soft rounded shading, bounce-light rims, faked
   contact shading, bloom on emissive bodies, painterly nebula backdrop. No audio.
 - **Scroll model:** continuous flight (not snap-to).
-- **Layout:** the sun, then five planets spread through space (radius, bearing and
-  elevation), 15–25 units apart, with no orbit lines. Planets spin but never move, so
-  the camera's dwell points stay put.
+- **Layout:** the sun, then five planets scattered around it on tilted orbits (seeded,
+  see §4), with no orbit lines. Planets spin but never move, so the camera's dwell
+  points stay put; the flight slingshots around each body on its way to the next.
 - **`/resume`** stays an ATS-clean HTML document; `/aaron-ellis-resume.pdf` stays
   downloadable and is regenerated whenever content changes (`pnpm build && pnpm pdf`).
 
@@ -56,21 +56,17 @@ planet's role card fades in on final approach.
 
 ## 3. Content
 
-`app/content/planets.ts` is the single source of truth for both copy and scene layout.
-The schema is `Planet` in `app/content/types.ts`.
+`app/content/planets.ts` is the single source of truth for copy, palettes, sizes and
+orbit radii. The schema is `Planet` in `app/content/types.ts`. Where on its orbit each
+planet sits comes from the seeded layout (§4).
 
-| idx | id         | org        | period            | biome            | radius | bearing | elevation |
-| --- | ---------- | ---------- | ----------------- | ---------------- | ------ | ------- | --------- |
-| 0   | `sofi`     | SoFi       | 2017-06 → 2021-03 | molten           | 10     | 152°    | +1        |
-| 1   | `public`   | Public.com | 2021-04 → 2023-05 | ocean            | 24     | 126°    | +1        |
-| 2   | `empirium` | Empirium   | 2023-06 → 2024-05 | desert           | 40     | 132°    | −4        |
-| 3   | `nuvalabs` | NuvaLabs   | 2024-06 → 2026-05 | ice-ringed       | 58     | 152°    | −5        |
-| 4   | `topstep`  | Topstep    | 2026-10 → present | gas-giant-banded | 78     | 152°    | −15       |
-
-Placement is tuned so every leg heads somewhere new as seen from the parked camera
-(SoFi out left and up, Public.com right, Empirium nearly straight ahead and down,
-NuvaLabs left and up, Topstep right and down). `camera-path.test.ts` guards the
-variety, spacing (≥ 14 units), clearances and the sunlit arrival.
+| idx | id         | org        | period            | biome            | radius |
+| --- | ---------- | ---------- | ----------------- | ---------------- | ------ |
+| 0   | `sofi`     | SoFi       | 2017-06 → 2021-03 | molten           | 10     |
+| 1   | `public`   | Public.com | 2021-04 → 2023-05 | ocean            | 24     |
+| 2   | `empirium` | Empirium   | 2023-06 → 2024-05 | desert           | 40     |
+| 3   | `nuvalabs` | NuvaLabs   | 2024-06 → 2026-05 | ice-ringed       | 58     |
+| 4   | `topstep`  | Topstep    | 2026-10 → present | gas-giant-banded | 78     |
 
 - Copy for the first four roles is carried over verbatim from the old site.
 - Topstep's copy is mandate-focused ("Owns…", "Sets…", "Defines…") and gets refreshed
@@ -82,11 +78,29 @@ variety, spacing (≥ 14 units), clearances and the sunlit arrival.
 ## 4. Scene spec
 
 **Contracts (W1):** `app/scene/constants.ts` (`SUN_RADIUS = 1`, `DPR_MAX`, `NEBULA_SEED`,
-`isQaMode()`), `app/scene/types.ts` (`PlanetBodyProps`) and `app/scene/layout.ts`
-(`planetPosition(visual)`).
+`LAYOUT_SEED`, `isQaMode()`), `app/scene/types.ts` (`PlanetBodyProps`),
+`app/scene/layout.ts` (`orbitPosition(radius, orbit)`) and
+`app/scene/system-layout.ts` (`getSystemLayout()`).
 
-- **World units:** the sun's radius is 1. +y is up and orbits lie in y = 0.
+- **World units:** the sun's radius is 1. +y is up; orbits are circles around the sun,
+  each tilted 4°–14° out of y = 0.
 - **Angles:** 0 points along +x; positive angles turn counter-clockwise seen from above.
+
+### Layout (seeded)
+
+`generateLayout(seed)` places each planet on its content orbit radius at a seeded
+bearing, inclination and node, and draws every moon's orbit (radius, inclination,
+node, phase, speed — about one in four retrograde) per planet. It re-rolls, still
+deterministically, until `checkLayout` passes:
+
+- neighbours ≥ 14 units apart; consecutive bearings 60°–150° apart;
+- no empty sector wider than 150°, so the planets surround the sun;
+- planets both above and below the sun's plane;
+- every slingshot sweeps 60°–210° round its body, and the sampled flight clears the
+  sun's corona and every planet's rings and moons, in landscape and portrait.
+
+`LAYOUT_SEED` is the shipped layout (an outward spiral round the sun). `?seed=N`
+previews another one on the home page and in `/lab`; seeds 1–200 are tested valid.
 
 ### Sun
 
@@ -95,13 +109,16 @@ original faint orbit guides were removed to give a sense of open space.)
 
 ### Planets
 
-| Planet                    | Visual notes                                                               |
-| ------------------------- | -------------------------------------------------------------------------- |
-| SoFi — "The Rewrite"      | Deep orange/red core, emissive lava cracks, 1 small moon                   |
-| Public.com — "Corduroy"   | Cyan/teal ocean, wispy cloud bands, 1 moon                                 |
-| Empirium — "The Traverse" | Sandy ochre with a violet dusk ring                                        |
-| NuvaLabs — "Prime Face"   | Pale blue ice, Saturn-style rings, 2 moons                                 |
-| Topstep — "Charts"        | Cream and muted-blue bands that evoke a chart grid, subtle storm, no moons |
+Palettes are sampled from each company's own site CSS tokens; moons take their own
+brand color (`palette.moons`).
+
+| Planet                    | Visual notes                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| SoFi — "The Rewrite"      | Aubergine crust, glowing SoFi-teal lava cracks, sky rim, 1 butter-yellow moon        |
+| Public.com — "Corduroy"   | Public brand-blue ocean, cyan shallows, periwinkle clouds, 1 bright-blue moon        |
+| Empirium — "The Traverse" | Ochre sands with bone highlights, a steel-blue ring                                  |
+| NuvaLabs — "Prime Face"   | Periwinkle ice, violet caps and ring bands, sky-blue rim, 2 moons (blue, NUVA mint)  |
+| Topstep — "Charts"        | Topstep gold with royal-purple bands that evoke a chart grid, subtle storm, no moons |
 
 ### Lighting
 
@@ -131,13 +148,19 @@ A painterly nebula gradient with a few GPU-instanced dust motes, seeded by
 
 - **Page 0 (hero):** the sun fills the frame, with the name, tagline and a "Scroll"
   cue.
-- **Pages 1–5:** each leg of the flight (`app/scene/camera-path.ts`) is:
-  - **pan** (first 30%): the camera holds and turns to face the next planet's centre,
-    out in the distance;
-  - **dolly**: it moves in along a straight line (eased, no swoop up or down);
-  - **settle** (last ~45% of the dolly): the aim eases off-centre so the planet slides
-    to the right as the camera parks.
-  - Each planet's parked pose sits on its approach line, a touch above for a ¾ view.
+- **Pages 1–5:** each leg of the flight (`app/scene/camera-path.ts`) is one smooth
+  curve, eased from rest to rest:
+  - **slingshot** (first 45%): the camera swings round the body it is leaving (the sun
+    on the first leg), spiralling in to a periapsis just outside its rings and moons,
+    and leaves on the tangent toward the next planet. The aim turns from the parked
+    shot to the next planet, pulled toward the slung body mid-swing so it whips past
+    the edge of frame;
+  - **cruise**: a Bézier from that tangent onto the next planet's approach line;
+  - **approach + settle**: a straight run into the parked pose; from 68% of the leg the
+    aim eases off-centre so the planet slides to the right as the role card fades in.
+  - Each planet's parked pose is on its sunlit side (within 60° of the sun), turned
+    away from the next planet so the next slingshot has room to swing, a touch above
+    for a ¾ view.
 - **Navigation:**
   - "Skip to text" goes to `/resume`.
   - ArrowDown/ArrowUp step between planets; Home/End jump to the sun or the outermost
@@ -230,7 +253,7 @@ fly-through on a real GPU that the owner runs before deploying.
 | **W1** ✅     | Cleanup + scaffold   | Delete the trail-map code; add R3F deps; `planets.ts`, `education.ts`, skills, meta; contracts (`app/scene/*`, `app/lib/progress.ts`, `app/lib/capability.ts`); stub `_index.tsx`; `/resume` on planets; regenerate the PDF | —            |
 | **W2a** ✅    | Scene + lighting     | Lazy Canvas in `[data-scene-root]`, sun, orbit guides, environment, postprocessing                                                                                                                                          | W1           |
 | **W2b** ✅    | Planet designer      | Five `PlanetBody` components (biome shaders) against `PlanetBodyProps`                                                                                                                                                      | W1           |
-| **W3** ✅     | Camera + scroll      | Curve from `planetPosition()`, dwell/travel easing on `getProgress()`, keyboard navigation                                                                                                                                  | W2a          |
+| **W3** ✅     | Camera + scroll      | Curve from the seeded layout, dwell/travel easing on `getProgress()`, keyboard navigation                                                                                                                                   | W2a          |
 | **W4** ✅     | Panels + copy        | Fade the prerendered sections by `dwellRange()`; hero polish; typography and token pass                                                                                                                                     | W3           |
 | **Gate 1** ✅ | Reviewer             | Diffs and self-tests from W1–W4                                                                                                                                                                                             | W1–W4        |
 | **W5** ✅     | Mobile tune + poster | `PerformanceMonitor` tiers; `scripts/render-poster.ts` (`?qa=1`) for the poster, the fallback and the OG image                                                                                                              | W2a, W2b, W4 |
@@ -264,17 +287,17 @@ independently.
 
 ## 12. Decisions log
 
-| Decision       | Choice                                                         | Rejected alternatives                        |
-| -------------- | -------------------------------------------------------------- | -------------------------------------------- |
-| Art style      | Pixar/Dreamworks                                               | Flat vector; Ghibli painterly; low-poly      |
-| Scroll model   | Continuous flight on native document scroll                    | Snap-to; drei ScrollControls                 |
-| Existing site  | Replace entirely                                               | Archive branch; easter-egg route             |
-| Layout         | Sun + planets spread in 3D, varied flight directions           | Concentric orbits + guides; orbiting planets |
-| Semantics      | Prerendered document always; canvas as an aria-hidden backdrop | Reduced-motion-only cards; drei `<Html>`     |
-| Mobile         | Same 3D, dialed down                                           | 3D intro + cards; full parity                |
-| Postprocessing | Bloom, vignette, SMAA                                          | SSAO; FXAA                                   |
-| Hosting        | Static build on Railway (sirv)                                 | SSR on Railway; stay on Cloudflare Pages     |
-| First deploy   | Aaron runs it locally                                          | Project token in a cloud session             |
-| Quality bar    | a11y 100, CLS 0, perf ≥ 85                                     | Plan's a11y 95; today's perf 90              |
-| Domain         | `*.up.railway.app` for now                                     | Custom domain now                            |
-| Audio          | None                                                           | Opt-in ambient                               |
+| Decision       | Choice                                                         | Rejected alternatives                                                          |
+| -------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Art style      | Pixar/Dreamworks                                               | Flat vector; Ghibli painterly; low-poly                                        |
+| Scroll model   | Continuous flight on native document scroll                    | Snap-to; drei ScrollControls                                                   |
+| Existing site  | Replace entirely                                               | Archive branch; easter-egg route                                               |
+| Layout         | Seeded scatter round the sun on tilted orbits, slingshot legs  | Hand-placed line; concentric orbit guides; orbiting planets; re-roll per visit |
+| Semantics      | Prerendered document always; canvas as an aria-hidden backdrop | Reduced-motion-only cards; drei `<Html>`                                       |
+| Mobile         | Same 3D, dialed down                                           | 3D intro + cards; full parity                                                  |
+| Postprocessing | Bloom, vignette, SMAA                                          | SSAO; FXAA                                                                     |
+| Hosting        | Static build on Railway (sirv)                                 | SSR on Railway; stay on Cloudflare Pages                                       |
+| First deploy   | Aaron runs it locally                                          | Project token in a cloud session                                               |
+| Quality bar    | a11y 100, CLS 0, perf ≥ 85                                     | Plan's a11y 95; today's perf 90                                                |
+| Domain         | `*.up.railway.app` for now                                     | Custom domain now                                                              |
+| Audio          | None                                                           | Opt-in ambient                                                                 |

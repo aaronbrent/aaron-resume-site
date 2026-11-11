@@ -37,18 +37,24 @@ export type YearMonth = `${number}-${number}`;
 
 export interface PlanetVisual {
   biome: Biome;
-  palette: { base: string; accent: string; atmosphere: string };
+  /**
+   * Colors sampled from the company's own site palette. `moons` holds one
+   * color per moon (falls back to the atmosphere color).
+   */
+  palette: {
+    base: string;
+    accent: string;
+    atmosphere: string;
+    moons?: readonly string[];
+  };
   /** Radius in scene units, relative to the sun (SUN_RADIUS = 1). */
   size: number;
-  /** Horizontal distance from the sun, scene units. Strictly increasing inner → outer. */
-  orbitRadius: number;
   /**
-   * Fixed bearing around the sun in radians (0 = +x, counter-clockwise seen
-   * from above). Planets never move, so the camera's dwell points stay put.
+   * Orbit radius around the sun, scene units. Strictly increasing inner →
+   * outer. Where on the orbit the planet sits (bearing, tilt) comes from the
+   * seeded layout (app/scene/system-layout.ts), not from content.
    */
-  orbitAngle: number;
-  /** Height above (+) or below (−) the sun's plane, scene units. */
-  elevation: number;
+  orbitRadius: number;
   hasRings: boolean;
   moonCount: 0 | 1 | 2;
 }

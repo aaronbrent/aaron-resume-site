@@ -1,7 +1,5 @@
 import type { Planet } from "./types.ts";
 
-const deg = (d: number) => (d * Math.PI) / 180;
-
 /**
  * The five planets (docs/PLAN-STAR-SYSTEM.md §3), inner → outer = chronological.
  * Copy for SoFi, Public.com, Empirium, and NuvaLabs is carried over verbatim
@@ -9,11 +7,16 @@ const deg = (d: number) => (d * Math.PI) / 180;
  *
  * May 2026 → October 2026 is a real gap and stays visible — no filler.
  *
- * Placement (orbitRadius / orbitAngle / elevation) is tuned so each leg of
- * the flight heads somewhere new as seen from the parked camera: SoFi out to
- * the left and up, Public.com to the right, Empirium nearly straight ahead
- * and down, NuvaLabs left and up, Topstep right and down. The camera-path
- * tests guard that variety, the spacing and the clearances.
+ * Content fixes each planet's orbit radius (inner → outer = chronological);
+ * where on that orbit it sits, and its moons' orbits, come from the seeded
+ * layout (app/scene/system-layout.ts, LAYOUT_SEED).
+ *
+ * Palettes are sampled from each company's own site CSS tokens:
+ *  - SoFi: aubergine #211747, teal #00a2c7, sky #6699cc, butter #fbd974
+ *  - Public.com: --blue-brand #00379a, cyan #52ffff, --blue-light-001/002
+ *  - Empirium (empirium.co): steel hsl(209 44% 38%), chart ochre, bone
+ *  - NuvaLabs: navy/periwinkle/violet #6c63ff/sky #43b1ff; NUVA mint #4adaa8
+ *  - Topstep: --gold, --royal, --gold--100
  */
 export const planets = [
   {
@@ -35,11 +38,14 @@ export const planets = [
     tech: ["typescript", "react", "angular", "leadership"],
     visual: {
       biome: "molten",
-      palette: { base: "#7a1f12", accent: "#ff7a1a", atmosphere: "#ffb36b" },
+      palette: {
+        base: "#3d2f7a",
+        accent: "#00a2c7",
+        atmosphere: "#6699cc",
+        moons: ["#fbd974"],
+      },
       size: 0.55,
       orbitRadius: 10,
-      orbitAngle: deg(152),
-      elevation: 1,
       hasRings: false,
       moonCount: 1,
     },
@@ -62,11 +68,14 @@ export const planets = [
     tech: ["typescript", "react", "cwv", "node"],
     visual: {
       biome: "ocean",
-      palette: { base: "#0f5f7a", accent: "#3fd0c9", atmosphere: "#bff3ff" },
+      palette: {
+        base: "#00379a",
+        accent: "#52ffff",
+        atmosphere: "#99afff",
+        moons: ["#4d74ff"],
+      },
       size: 0.8,
       orbitRadius: 24,
-      orbitAngle: deg(126),
-      elevation: 1,
       hasRings: false,
       moonCount: 1,
     },
@@ -90,11 +99,9 @@ export const planets = [
     tech: ["typescript", "node", "api", "payments", "rbac"],
     visual: {
       biome: "desert",
-      palette: { base: "#c98f4a", accent: "#8a5cc7", atmosphere: "#f2c98f" },
+      palette: { base: "#d9b36d", accent: "#36628b", atmosphere: "#e9e8e2" },
       size: 0.75,
       orbitRadius: 40,
-      orbitAngle: deg(132),
-      elevation: -4,
       hasRings: true,
       moonCount: 0,
     },
@@ -119,11 +126,14 @@ export const planets = [
     tech: ["typescript", "node", "auth", "aml", "ai-agents", "leadership"],
     visual: {
       biome: "ice-ringed",
-      palette: { base: "#b9d7ef", accent: "#ffffff", atmosphere: "#dff1ff" },
+      palette: {
+        base: "#95a3c9",
+        accent: "#6c63ff",
+        atmosphere: "#43b1ff",
+        moons: ["#0099ff", "#4adaa8"],
+      },
       size: 1.0,
       orbitRadius: 58,
-      orbitAngle: deg(152),
-      elevation: -5,
       hasRings: true,
       moonCount: 2,
     },
@@ -148,11 +158,9 @@ export const planets = [
     tech: ["typescript", "react", "canvas", "webworkers", "performance", "leadership"],
     visual: {
       biome: "gas-giant-banded",
-      palette: { base: "#e8dcc0", accent: "#4a7ba6", atmosphere: "#f5efd8" },
+      palette: { base: "#d5a161", accent: "#362a74", atmosphere: "#eed9c0" },
       size: 1.35,
       orbitRadius: 78,
-      orbitAngle: deg(152),
-      elevation: -15,
       hasRings: false,
       moonCount: 0,
     },

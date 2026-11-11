@@ -7,13 +7,13 @@ import { isQaMode } from "./constants";
 import { DustMotes } from "./DustMotes";
 import { CameraRig } from "./CameraRig";
 import { PlanetProbe } from "./PlanetProbe";
-import { planetPosition } from "./layout";
 import { Lighting } from "./Lighting";
 import { Nebula } from "./Nebula";
 import { PlanetBody } from "./planets";
 import { FpsGovernor, forcedTier, initialTier, TIERS, type Tier } from "./quality";
 import { SceneCanvas } from "./SceneCanvas";
 import { Sun } from "./Sun";
+import { getSystemLayout } from "./system-layout";
 
 export interface SceneProps {
   /** Called once the first frame has been drawn to the canvas. */
@@ -118,6 +118,7 @@ function QualityGovernor({ onDrop }: { onDrop: () => void }) {
  */
 export default function Scene({ onFirstFrame, onFail }: SceneProps) {
   const qa = useMemo(() => isQaMode(), []);
+  const layout = useMemo(() => getSystemLayout(), []);
   const pinned = useMemo(() => forcedTier(window.location.search) !== null, []);
   const [tier, setTier] = useState<Tier>(startingTier);
   const quality = TIERS[tier];
@@ -137,21 +138,22 @@ export default function Scene({ onFirstFrame, onFail }: SceneProps) {
       onContextLost={onFail}
     >
       <color attach="background" args={["#07061a"]} />
-      <CameraRig qa={qa} />
+      <CameraRig qa={qa} layout={layout} />
       <Nebula />
       <DustMotes qa={qa} count={quality.dust} />
       <Lighting />
       <Sun qa={qa} />
-      {planets.map((p) => (
+      {planets.map((p, i) => (
         <PlanetBody
           key={p.id}
           visual={p.visual}
-          position={planetPosition(p.visual)}
+          position={layout.planets[i]!.position}
+          moons={layout.planets[i]!.moons}
           qa={qa}
           detail={quality.detail}
         />
       ))}
-      {qa ? <PlanetProbe /> : null}
+      {qa ? <PlanetProbe layout={layout} /> : null}
       <FirstFrame onFirstFrame={onFirstFrame} />
       {pinned || tier === 0 ? null : <QualityGovernor onDrop={dropTier} />}
       {qa ? <QaFrameDriver /> : null}

@@ -82,16 +82,20 @@ function color(hex: string): Color {
   return new Color(hex);
 }
 
-/** One reusable body material for planets, cloud shells and moons. */
+/**
+ * One reusable body material for planets, cloud shells and moons. A moon
+ * passes its own brand color as `tint`; it becomes the moon's `uBase`.
+ */
 export function createBodyMaterial(
   visual: PlanetVisual,
   kind: BodyKind,
   seed = 0,
+  tint?: string,
 ): BodyMaterial {
   const look = BIOME_LOOK[visual.biome];
   const uniforms: BodyUniforms = {
     uTime: { value: 0 },
-    uBase: { value: color(visual.palette.base) },
+    uBase: { value: color(tint ?? visual.palette.base) },
     uAccent: { value: color(visual.palette.accent) },
     uAtmos: { value: color(visual.palette.atmosphere) },
     uSeed: { value: seed },
@@ -138,8 +142,9 @@ export function createAtmosphereMaterial(visual: PlanetVisual): ShaderMaterial {
 }
 
 /**
- * Rings: desert = thin violet "dusk" ring in the accent; ice = wide
- * Saturn-style bands. `lights: true` so the scene's sun lights them too.
+ * Rings: desert = thin ring in the accent (Empirium's steel blue) fading to
+ * a pale highlight; ice = wide Saturn-style bands in the base/accent.
+ * `lights: true` so the scene's sun lights them too.
  */
 export function createRingMaterial(
   visual: PlanetVisual,
@@ -150,7 +155,7 @@ export function createRingMaterial(
   return new ShaderMaterial({
     uniforms: {
       ...UniformsUtils.clone(UniformsLib.lights),
-      // desert "dusk" ring: violet accent fading to a lavender highlight
+      // desert ring: accent fading toward the atmosphere + white
       uBase: { value: color(ice ? base : accent) },
       uAccent: {
         value: ice

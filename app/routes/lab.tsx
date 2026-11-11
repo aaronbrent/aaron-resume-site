@@ -1,9 +1,10 @@
 /**
  * Dev-only planet lab (registered in app/routes.ts only when LAB=1).
- *   /lab?planet=<id>   one planet at its true planetPosition, framed from the
+ *   /lab?planet=<id>   one planet at its true layout position, framed from the
  *                      sun side so lighting matches the real scene
  *   /lab?planet=all    all five in a row (one canvas each, same framing)
  *   &qa=1              frozen, deterministic motion (isQaMode)
+ *   &seed=N            the layout seed (system-layout.ts), as on the home page
  * Lighting mirrors W2a's scene: point light at the origin (decay 2), cool
  * camera-side fill, low Lightformer environment, ACES on the renderer, and
  * no post-processing (removed from the scene: it broke on real GPUs).
@@ -17,6 +18,7 @@ import { planets } from "~/content/planets";
 import type { Planet } from "~/content/types";
 import { isQaMode } from "~/scene/constants";
 import { labFraming } from "~/scene/planets/lab-math";
+import { getSystemLayout, type PlacedPlanet } from "~/scene/system-layout";
 import { PlanetBody } from "~/scene/planets";
 
 export function meta() {
@@ -27,15 +29,20 @@ export function meta() {
 const LAB_SUN_IRRADIANCE = 2.4;
 const FOV = 32;
 
-function Rig({ planet }: { planet: Planet }) {
+function Rig({ planet, placed }: { planet: Planet; placed: PlacedPlanet }) {
   const camera = useThree((s) => s.camera);
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
   useLayoutEffect(() => {
-    const { planet: target, camera: position } = labFraming(planet.visual, FOV, aspect);
+    const { planet: target, camera: position } = labFraming(
+      planet.visual,
+      placed.position,
+      FOV,
+      aspect,
+    );
     camera.position.set(...position);
     camera.lookAt(...target);
     camera.updateProjectionMatrix();
-  }, [camera, planet, aspect]);
+  }, [camera, planet, placed, aspect]);
   return null;
 }
 
@@ -48,9 +55,17 @@ function ReadyFlag({ onReady }: { onReady: () => void }) {
   return null;
 }
 
-function LabView({ planet, qa }: { planet: Planet; qa: boolean }) {
+function LabView({
+  planet,
+  placed,
+  qa,
+}: {
+  planet: Planet;
+  placed: PlacedPlanet;
+  qa: boolean;
+}) {
   const [ready, setReady] = useState(false);
-  const { planet: position, fill } = labFraming(planet.visual, FOV);
+  const { planet: position, fill } = labFraming(planet.visual, placed.position, FOV);
   const d = Math.hypot(...position);
   return (
     <div
@@ -64,7 +79,7 @@ function LabView({ planet, qa }: { planet: Planet; qa: boolean }) {
         camera={{ fov: FOV, near: 0.1, far: 200 }}
       >
         <color attach="background" args={["#05060f"]} />
-        <Rig planet={planet} />
+        <Rig planet={planet} placed={placed} />
         <pointLight
           position={[0, 0, 0]}
           decay={2}
@@ -96,7 +111,12 @@ function LabView({ planet, qa }: { planet: Planet; qa: boolean }) {
             scale={[8, 8, 1]}
           />
         </Environment>
-        <PlanetBody visual={planet.visual} position={position} qa={qa} />
+        <PlanetBody
+          visual={planet.visual}
+          position={position}
+          moons={placed.moons}
+          qa={qa}
+        />
         <ReadyFlag onReady={() => setReady(true)} />
       </Canvas>
       <p className="pointer-events-none absolute bottom-2 left-0 w-full text-center font-mono text-xs text-white/50">
@@ -113,6 +133,7 @@ export default function Lab() {
   const which = params.get("planet") ?? "all";
   const qa = isQaMode(`?${params.toString()}`);
   const shown = which === "all" ? planets : planets.filter((p) => p.id === which);
+  const layout = getSystemLayout(`?${params.toString()}`);
 
   return (
     <div className="fixed inset-0 flex items-center bg-[#05060f]">
@@ -123,7 +144,12 @@ export default function Lab() {
       ) : (
         <div className={which === "all" ? "flex h-3/5 w-full" : "h-full w-full"}>
           {shown.map((p) => (
-            <LabView key={p.id} planet={p} qa={qa} />
+            <LabView
+              key={p.id}
+              planet={p}
+              placed={layout.planets.find((l) => l.id === p.id)!}
+              qa={qa}
+            />
           ))}
         </div>
       )}

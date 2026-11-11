@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { PerspectiveCamera, Vector3 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { planets } from "~/content/planets";
 import { installKeyboardNav } from "~/lib/keyboard-nav";
 import { getProgress } from "~/lib/progress";
 import { buildCameraPath, rigFov } from "./camera-path";
+import type { SystemLayout } from "./system-layout";
 
 /**
  * Scroll-driven camera (docs/PLAN-STAR-SYSTEM.md §5, W3). Reads scroll
@@ -16,12 +16,15 @@ import { buildCameraPath, rigFov } from "./camera-path";
 /** Exponential smoothing rate (1/s); higher = snappier follow. */
 const FOLLOW_RATE = 5.5;
 
-export function CameraRig({ qa }: { qa: boolean }) {
+export function CameraRig({ qa, layout }: { qa: boolean; layout: SystemLayout }) {
   const camera = useThree((s) => s.camera);
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
   const invalidate = useThree((s) => s.invalidate);
   const portrait = aspect < 1;
-  const path = useMemo(() => buildCameraPath(planets, { portrait }), [portrait]);
+  const path = useMemo(
+    () => buildCameraPath(layout.planets, { portrait }),
+    [layout, portrait],
+  );
 
   const goalPos = useRef(new Vector3());
   const goalTarget = useRef(new Vector3());

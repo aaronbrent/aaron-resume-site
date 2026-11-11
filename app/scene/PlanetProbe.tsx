@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { PerspectiveCamera, Vector3 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { planets } from "~/content/planets";
-import { planetPosition } from "./layout";
+import type { SystemLayout } from "./system-layout";
 
 /**
  * Test probe (`?qa=1` only): writes each planet's projected screen circle
@@ -10,7 +9,7 @@ import { planetPosition } from "./layout";
  * e2e can assert the fixed card never covers its planet. It positions
  * nothing — role cards are fixed to the left (app.css).
  */
-export function PlanetProbe() {
+export function PlanetProbe({ layout }: { layout: SystemLayout }) {
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const targets = useRef<{ article: HTMLElement; world: Vector3; radius: number }[]>([]);
@@ -18,19 +17,19 @@ export function PlanetProbe() {
   const forward = useMemo(() => new Vector3(), []);
 
   useEffect(() => {
-    targets.current = planets.flatMap((p) => {
+    targets.current = layout.planets.flatMap((p) => {
       const article = document.querySelector<HTMLElement>(`#${p.id} > article`);
       return article
         ? [
             {
               article,
-              world: new Vector3(...planetPosition(p.visual)),
-              radius: p.visual.size,
+              world: new Vector3(...p.position),
+              radius: p.size,
             },
           ]
         : [];
     });
-  }, []);
+  }, [layout]);
 
   // After CameraRig (mounted earlier, same priority) has posed the camera.
   useFrame(() => {

@@ -3,17 +3,20 @@ import { planets } from "~/content/planets";
 import {
   BIOME_LOOK,
   moonOffset,
+  keepOutRadius,
   moonSpecs,
   ringSegments,
   ringUv,
   sphereSegments,
 } from "./config";
+import { generateLayout } from "../system-layout";
 import { labFraming } from "./lab-math";
 
 describe("labFraming", () => {
   it("frames each planet from the sun side, swung off the sun line", () => {
-    for (const { visual } of planets) {
-      const f = labFraming(visual, 32);
+    const layout = generateLayout();
+    for (const [i, { visual }] of planets.entries()) {
+      const f = labFraming(visual, layout.planets[i]!.position, 32);
       const toCam = f.fill;
       const toSun = f.planet.map((v) => -v) as [number, number, number];
       const dot = toCam[0] * toSun[0] + toCam[1] * toSun[1] + toCam[2] * toSun[2];
@@ -74,18 +77,66 @@ describe("moonOffset", () => {
 });
 
 describe("moonSpecs", () => {
+  const seeds = [1, 2, 3, 99, 0xdeadbeef];
+
   it("creates one spec per moon, sized 0.12–0.2 × the planet, outside any ring", () => {
-    for (const { visual } of planets) {
-      const specs = moonSpecs(visual);
-      expect(specs).toHaveLength(visual.moonCount);
-      for (const m of specs) {
-        expect(m.radius / visual.size).toBeGreaterThanOrEqual(0.12);
-        expect(m.radius / visual.size).toBeLessThanOrEqual(0.2);
-        const minOrbit = visual.hasRings
-          ? BIOME_LOOK[visual.biome].ring.outer * visual.size
-          : visual.size;
-        expect(m.orbit - m.radius).toBeGreaterThan(minOrbit);
+    for (const seed of seeds) {
+      for (const { visual } of planets) {
+        const specs = moonSpecs(visual, seed);
+        expect(specs).toHaveLength(visual.moonCount);
+        for (const m of specs) {
+          expect(m.radius / visual.size).toBeGreaterThanOrEqual(0.12);
+          expect(m.radius / visual.size).toBeLessThanOrEqual(0.2);
+          const minOrbit = visual.hasRings
+            ? BIOME_LOOK[visual.biome].ring.outer * visual.size
+            : visual.size;
+          expect(m.orbit - m.radius).toBeGreaterThan(minOrbit);
+        }
       }
+    }
+  });
+
+  it("keeps a planet's moons apart: stepped orbits, different tilts", () => {
+    const visual = {
+      biome: "ice-ringed",
+      size: 1,
+      hasRings: true,
+      moonCount: 2,
+    } as const;
+    for (let seed = 1; seed <= 200; seed++) {
+      const [a, b] = moonSpecs(visual, seed);
+      expect(b!.orbit - a!.orbit).toBeGreaterThan(a!.radius + b!.radius + 0.3);
+      expect(Math.abs(a!.inclination - b!.inclination)).toBeGreaterThanOrEqual(0.3);
+    }
+  });
+
+  it("is deterministic per seed and differs between seeds", () => {
+    const visual = { biome: "ocean", size: 0.8, hasRings: false, moonCount: 1 } as const;
+    expect(moonSpecs(visual, 5)).toEqual(moonSpecs(visual, 5));
+    expect(moonSpecs(visual, 5)[0]!.node).not.toBe(moonSpecs(visual, 6)[0]!.node);
+  });
+
+  it("gives every planet in the layout its own moon orbits", () => {
+    const moons = generateLayout().planets.flatMap((p) => p.moons);
+    expect(moons.length).toBeGreaterThan(1);
+    expect(new Set(moons.map((m) => m.node.toFixed(6))).size).toBe(moons.length);
+    expect(new Set(moons.map((m) => m.inclination.toFixed(6))).size).toBe(moons.length);
+  });
+});
+
+describe("keepOutRadius", () => {
+  it("covers the atmosphere, rings and every moon's whole orbit", () => {
+    for (const { visual } of planets) {
+      const moons = moonSpecs(visual, 7);
+      const r = keepOutRadius(visual, moons);
+      expect(r).toBeGreaterThanOrEqual(
+        visual.size * BIOME_LOOK[visual.biome].atmosphereScale,
+      );
+      if (visual.hasRings)
+        expect(r).toBeGreaterThanOrEqual(
+          visual.size * BIOME_LOOK[visual.biome].ring.outer,
+        );
+      for (const m of moons) expect(r).toBeGreaterThanOrEqual(m.orbit + m.radius);
     }
   });
 });

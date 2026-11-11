@@ -4,6 +4,7 @@
  * mobile lives here: segment counts (`detail`), ring/atmosphere/moon specs.
  */
 import type { Biome, PlanetVisual } from "~/content/types";
+import { mulberry32 } from "../random";
 
 /** Shader branch per body kind (`#define PLANET_KIND`). */
 export const KIND = {
@@ -151,27 +152,55 @@ export interface MoonSpec {
 }
 
 /**
- * Small, inclined orbits outside any ring. Phases are chosen so that at
- * QA_TIME the moons sit beside (not behind) their planet from the lab camera.
+ * Small, inclined orbits outside any ring, drawn from `seed` so every
+ * planet's moons move differently (system-layout.ts seeds them per planet).
+ * Successive moons step outward by more than both radii plus a margin, and
+ * their inclinations differ by ≥ 0.3 rad, so they never touch. About one in
+ * four runs retrograde.
  */
 export function moonSpecs(
   visual: Pick<PlanetVisual, "biome" | "size" | "moonCount" | "hasRings">,
+  seed: number,
 ): MoonSpec[] {
+  const rand = mulberry32(seed);
+  const between = (lo: number, hi: number) => lo + (hi - lo) * rand();
   const look = BIOME_LOOK[visual.biome];
-  const clearance = visual.hasRings ? look.ring.outer + 0.45 : 1.9;
+  const s = visual.size;
   const specs: MoonSpec[] = [];
+  let orbit = s * ((visual.hasRings ? look.ring.outer + 0.45 : 1.9) + between(0, 0.3));
+  let lastInclination = Number.NaN;
   for (let i = 0; i < visual.moonCount; i++) {
+    const radius = s * between(0.12, 0.2);
+    if (i > 0) orbit += specs[i - 1]!.radius + radius + s * between(0.32, 0.5);
+    let inclination = between(0.15, 0.7) * (rand() < 0.5 ? -1 : 1);
+    if (Math.abs(inclination - lastInclination) < 0.3) inclination = -inclination;
+    lastInclination = inclination;
     specs.push({
-      radius: visual.size * (i === 0 ? 0.19 : 0.13),
-      orbit: visual.size * (clearance + i * 0.7),
-      inclination: i === 0 ? 0.32 : -0.22,
-      node: i === 0 ? 0.6 : 2.1,
-      phase: i === 0 ? 2.6 : 4.4,
-      speed: i === 0 ? 0.22 : 0.15,
-      seed: 3.1 + i * 7.7,
+      radius,
+      orbit,
+      inclination,
+      node: between(0, Math.PI * 2),
+      phase: between(0, Math.PI * 2),
+      speed: between(0.12, 0.3) * (rand() < 0.25 ? -1 : 1),
+      seed: between(0, 20),
     });
   }
   return specs;
+}
+
+/**
+ * Keep-out radius around a planet's centre: atmosphere, rings and every moon's
+ * orbit. The camera path slings around it and the layout checks clear it.
+ */
+export function keepOutRadius(
+  visual: Pick<PlanetVisual, "biome" | "size" | "hasRings">,
+  moons: readonly Pick<MoonSpec, "orbit" | "radius">[],
+): number {
+  const look = BIOME_LOOK[visual.biome];
+  let r =
+    visual.size * Math.max(look.atmosphereScale, visual.hasRings ? look.ring.outer : 0);
+  for (const m of moons) r = Math.max(r, m.orbit + m.radius);
+  return r;
 }
 
 /**
